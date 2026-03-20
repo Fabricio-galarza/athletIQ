@@ -85,11 +85,11 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'my_bd',
-        'USER': 'my_user',
-        'PASSWORD': 'mi_password',
-        'HOST': 'my_server',
-        'PORT': 'my_port',
+        'NAME': 'athletiq',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'localhost',
+        'PORT': '5432',
         'OPTIONS': {
             'options': '-c search_path=core'
         },
