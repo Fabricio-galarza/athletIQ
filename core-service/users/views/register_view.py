@@ -11,8 +11,6 @@ class RegisterView(APIView):
     def post(self, request):
 
         serializer = RegisterSerializer(data=request.data)
-        print('hola')
-        print(request.data)
         if not serializer.is_valid():
             return Response(
                 {
