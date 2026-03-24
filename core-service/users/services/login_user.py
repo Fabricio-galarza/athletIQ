@@ -7,7 +7,6 @@ import json
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from users.models import User
-from users.models import Profile
 from permissions.models import Role
 from plans.models import Feature, Plan
 from sports.models import Sport
