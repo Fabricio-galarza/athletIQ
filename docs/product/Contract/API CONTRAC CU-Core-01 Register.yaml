@@ -1,0 +1,124 @@
+openapi: 3.0.3
+info:
+  title: AthletIQ API
+  version: 1.0.0
+  description: Core API for AthletIQ platform
+
+paths:
+  /api/v1/auth/register:
+    post:
+      summary: Register a new user
+      description: Creates a new user and assigns default role and plan
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternalError'
+
+components:
+  schemas:
+
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+        - first_name
+        - last_name
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@email.com
+        password:
+          type: string
+          format: password
+          example: SecurePass123!
+        first_name:
+          type: string
+          example: Fabricio
+        last_name:
+          type: string
+          example: Gomez
+
+    RegisterResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        profile:
+          type: object
+          properties:
+            first_name:
+              type: string
+            last_name:
+              type: string
+        role:
+          type: string
+          example: athlete
+        plan:
+          type: string
+          example: basic
+        message:
+          type: string
+          example: User registered successfully
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: VALIDATION_ERROR
+        details:
+          type: object
+          additionalProperties:
+            type: string
+
+    ConflictError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: EMAIL_ALREADY_EXISTS
+        message:
+          type: string
+
+    InternalError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: INTERNAL_ERROR
+        message:
+          type: string

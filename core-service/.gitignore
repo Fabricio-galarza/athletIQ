@@ -1,0 +1,20 @@
+# Ignore sensitive core config
+# Python
+__pycache__
+*.pyo
+
+# Virtual env
+venv/
+# Django
+*.log
+
+# Environment variables
+.env
+
+# VSCode / IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

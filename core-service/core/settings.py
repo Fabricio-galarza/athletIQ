@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -57,7 +58,16 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'common.middleware.CurrentUserMiddleware'
 ]
+
+#Maneja el cache en la web
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
+
 
 ROOT_URLCONF = 'core.urls'
 
@@ -85,11 +95,11 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'my_bd',
-        'USER': 'my_user',
-        'PASSWORD': 'mi_password',
-        'HOST': 'my_server',
-        'PORT': 'my_port',
+        'NAME': '',
+        'USER': '',
+        'PASSWORD': '',
+        'HOST': '',
+        'PORT': '5432',
         'OPTIONS': {
             'options': '-c search_path=core'
         },
@@ -121,7 +131,7 @@ AUTH_USER_MODEL = 'users.User'
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-mx'
 
 TIME_ZONE = 'UTC'
 
@@ -139,3 +149,10 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Simple JWT settings
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+}

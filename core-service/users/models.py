@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.db import models
 import uuid
+from common.models import BaseModel
 
 # Custom manager for user
 # Here I control how users and superusers are created
@@ -29,13 +30,21 @@ class UserManager(BaseUserManager):
     def create_superuser(self, email, password=None, **extra_fields):
         # For superuser access, I require these fields
         extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault()
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+       
 
-        return self.create_superuser(email, password)
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(email, password, **extra_fields)
     
 # user main user
 # I ONLY handle authentication here; I don't enter personal data.
-class User(AbstractBaseUser, PermissionsMixin):
+class User(BaseModel, AbstractBaseUser, PermissionsMixin):
     # I use UUII because it is the best to microservices and
     # avoid exposing sequential IDs 
     id          = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -47,27 +56,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active   = models.BooleanField(default=True)
     is_staff    = models.BooleanField(default=False)
 
-    # user creation date
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    # user audit
-    created_by = models.ForeignKey(
-        'self',
-        on_delete = models.SET_NULL,
-        null      = True,
-        blank     = True,
-        related_name= 'users_created'
-    )
-
-    updated_by = models.ForeignKey(
-        'self',
-        on_delete = models.SET_NULL,
-        null      = True,
-        blank     = True,
-        related_name= 'users_updated'
-    )
-
     # Personalized manager
     objects = UserManager()
      
@@ -77,10 +65,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     # I don't need any additional required fields
     REQUIRED_FIELDS = []
 
+    class Meta:
+        verbose_name = "usuario"
+
     def __str__(self):
         return super().__str__()
     
-from common.models import BaseModel
+
 
 
 # stores personal information of the user
