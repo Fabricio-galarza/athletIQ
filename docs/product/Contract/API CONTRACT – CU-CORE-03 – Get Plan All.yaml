@@ -1,0 +1,91 @@
+openapi: 3.0.3
+info:
+  title: Plans API
+  version: 1.0.0
+  description: API for managing subscription plans
+
+paths:
+  /api/v1/plans/:
+    get:
+      summary: Get All Plans
+      description: Retrieve all available plans (optionally filter by active status)
+      tags:
+        - Plans
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: is_active
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Filter active plans
+          example: true
+      responses:
+        '200':
+          description: List of plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanResponse'
+              example:
+                - id: 6c39abfb-04c0-460a-94df-f0113aea9968
+                  name: Basic
+                  description: Basic access
+                  price: "0.00"
+                  is_active: true
+                  created_at: 2026-03-25T10:00:00Z
+                  updated_at: 2026-03-25T10:00:00Z
+                - id: 7d12bc9a-2345-6789-abcd-123456789abc
+                  name: Pro
+                  description: Advanced features
+                  price: "29.99"
+                  is_active: true
+                  created_at: 2026-03-25T11:00:00Z
+                  updated_at: 2026-03-25T11:00:00Z
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                detail: Authentication credentials were not provided.
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                error: FORBIDDEN
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PlanResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: string
+          example: "29.99"
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time

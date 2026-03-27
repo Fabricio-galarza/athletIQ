@@ -1,0 +1,125 @@
+openapi: 3.0.3
+info:
+  title: Plans API
+  version: 1.0.0
+  description: API for managing subscription plans
+
+paths:
+  /api/v1/plans:
+    post:
+      summary: Create Plan
+      description: Creates a new subscription plan
+      tags:
+        - Plans
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlanRequest'
+            example:
+              name: Pro
+              description: Advanced plan with premium features
+              price: 29.99
+              is_active: true
+      responses:
+        '201':
+          description: Plan created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+              example:
+                id: 6c39abfb-04c0-460a-94df-f0113aea9968
+                name: Pro
+                description: Advanced plan with premium features
+                price: "29.99"
+                is_active: true
+                created_at: 2026-03-25T14:00:00Z
+                updated_at: 2026-03-25T14:00:00Z
+
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              example:
+                name:
+                  - Plan already exists
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                detail: Authentication credentials were not provided.
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                error: FORBIDDEN
+
+        '409':
+          description: Invalid data
+          content:
+            application/json:
+              example:
+                price:
+                  - A valid number is required
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreatePlanRequest:
+      type: object
+      required:
+        - name
+        - price
+      properties:
+        name:
+          type: string
+          description: Unique plan name
+          example: Pro
+        description:
+          type: string
+          description: Plan description
+          example: Advanced plan with premium features
+        price:
+          type: number
+          format: decimal
+          minimum: 0.01
+          example: 29.99
+        is_active:
+          type: boolean
+          default: true
+          example: true
+
+    PlanResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: string
+          example: "29.99"
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time

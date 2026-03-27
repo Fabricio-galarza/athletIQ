@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'permissions',
     'sports',
     'forms',
+    "modules",
 ]
 
 MIDDLEWARE = [
@@ -90,7 +91,7 @@ DATABASES = {
         'USER': '',
         'PASSWORD': '',
         'HOST': '',
-        'PORT': '5432',
+        'PORT': '',
         'OPTIONS': {
             'options': '-c search_path=core'
         },
