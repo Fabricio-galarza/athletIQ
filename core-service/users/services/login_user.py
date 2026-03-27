@@ -91,7 +91,7 @@ def login_user(data):
         # access token: short-lived, used in every request
         # refresh token: long-lived, used to renew the access token
         refresh = RefreshToken.for_user(user)
-        print("LIST SPORTS",  list(sports))
+      
         # 🔹 build the session result
         result = {
             "token": str(refresh.access_token),  # quick access to access token
@@ -109,7 +109,7 @@ def login_user(data):
                 "refresh": str(refresh)
             }
         }
-        print("PASA RESULT")
+    
         # 🔹 cache the session for 30 minutes to speed up subsequent logins
         cache.set(cache_key, result, timeout=60*30)
       

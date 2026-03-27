@@ -30,8 +30,7 @@ class LoginView(APIView):
         # 🔹 attempt login and return full session data
         try:
             result = login_user(serializer.validated_data)
-            print("FOMS TYPE 33", type(result["forms"]))
-            print("FOMS 33", result["forms"])
+           
             return Response(
                 {
                     # quick access token for immediate use
