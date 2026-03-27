@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAdminUser
 
 from plans.models import Feature
 from plans.serializers.feature_serializer import FeatureSerializer
@@ -9,6 +10,9 @@ from plans.services.feature_service import create_feature, update_feature
 
 class FeatureListCreateView(APIView):
 
+    # Only to admin users
+    permission_classes = [IsAdminUser]
+    
     def get(self, request):
 
         features = Feature.objects.all()

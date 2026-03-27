@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAdminUser
 
 from plans.models import Plan, PlanModule
 from plans.serializers.plan_module_serializer import PlanModuleConfigSerializer
@@ -8,6 +9,9 @@ from plans.services.plan_service import set_plan_modules
 
 
 class PlanModuleView(APIView):
+
+     # Only to admin users
+    permission_classes = [IsAdminUser]
 
     def get_plan(self, pk):
         try:

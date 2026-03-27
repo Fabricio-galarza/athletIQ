@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 
 from users.serializers.register_serializers import RegisterSerializer
 from users.services.register_user import register_user
@@ -8,6 +9,8 @@ from users.services.register_user import register_user
 
 class RegisterView(APIView):
 
+     # used to end point public
+    permission_classes = [AllowAny] 
     def post(self, request):
 
         serializer = RegisterSerializer(data=request.data)

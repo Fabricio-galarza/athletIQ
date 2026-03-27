@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAdminUser
 
 from plans.models import Plan, PlanFeature
 from plans.serializers.plan_feature_serializer import PlanFeatureConfigSerializer
@@ -8,6 +9,9 @@ from plans.services.plan_service import set_plan_features
 
 
 class PlanFeatureView(APIView):
+
+     # Only to admin users
+    permission_classes = [IsAdminUser]
 
     # helper to get plan
     def get_plan(self, pk):

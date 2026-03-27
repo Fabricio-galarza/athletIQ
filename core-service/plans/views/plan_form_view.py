@@ -1,12 +1,16 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAdminUser
 
 from plans.models import Plan, PlanForm
 from plans.serializers.plan_form_serializer import PlanFormConfigSerializer
 from plans.services.plan_form_service import set_plan_forms
 
 class PlanFormView(APIView):
+
+     # Only to admin users
+    permission_classes = [IsAdminUser]
     
     def get_plan(self, pk):
         try:

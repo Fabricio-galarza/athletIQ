@@ -63,7 +63,8 @@ def login_user(data):
         # prefetch_related avoids N+1 queries when accessing form_fields and their fields
         forms_qs = Form.objects.filter(
             is_active=True,
-            sport_forms__sport__user_sports__user=user
+            sport_forms__sport__user_sports__user=user,
+            plan_forms__plan__user_plans__user=user
         ).prefetch_related(
             'form_fields__field'
         ).distinct()
@@ -72,7 +73,7 @@ def login_user(data):
         forms = [
             {
                 "name": form.name,
-                "module": form.module,
+                "module": form.module.name,
                 "fields": [
                     {
                         "name": ff.field.name,
@@ -90,7 +91,7 @@ def login_user(data):
         # access token: short-lived, used in every request
         # refresh token: long-lived, used to renew the access token
         refresh = RefreshToken.for_user(user)
-        
+        print("LIST SPORTS",  list(sports))
         # 🔹 build the session result
         result = {
             "token": str(refresh.access_token),  # quick access to access token
@@ -108,12 +109,12 @@ def login_user(data):
                 "refresh": str(refresh)
             }
         }
-        
+        print("PASA RESULT")
         # 🔹 cache the session for 30 minutes to speed up subsequent logins
-        cache.set(cache_key, json.dumps(result), timeout=60*30)
-        
+        cache.set(cache_key, result, timeout=60*30)
+      
         return result
-    
+     
     except Exception as e:
         logger.error("Error durante el inicio de sesión", exc_info=True)
         raise e
