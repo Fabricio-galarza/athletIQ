@@ -1,7 +1,7 @@
 from rest_framework.response import Response
 from rest_framework import status
 
-from plans.services.access_service import user_has_form
+from core.services.access_service import user_has_form
 
 
 # decorator to enforce form-level access control on endpoints
@@ -15,11 +15,12 @@ def require_form(form_name):
 
             user = request.user
 
-            # temporary fallback while authentication is not implemented
-            # this should be removed once JWT auth is in place
+            # user not authenticateds
             if not user or user.is_anonymous:
-                from users.models import User
-                user = User.objects.first()
+                return Response(
+                    {"error": "AUTH_REQUIRED"},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
 
             # check if user has access to the required form
             if not user_has_form(user, form_name):

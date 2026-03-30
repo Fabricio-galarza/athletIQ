@@ -1,9 +1,9 @@
 from rest_framework.response import Response
 from rest_framework import status
 
-from plans.services.access_service import user_has_feature
+from core.services.access_service import user_has_feature
 
-
+# decorator to enforce form-level access control on endpoints
 def require_feature(feature_code):
 
     def decorator(view_func):
@@ -11,10 +11,14 @@ def require_feature(feature_code):
         def wrapper(self, request, *args, **kwargs):
 
             user = request.user
-
+            
+            # user not authenticated
             if not user or user.is_anonymous:
-                from users.models import User
-                user = User.objects.first()
+                return Response(
+                    {"error": "AUTH_REQUIRED"},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+                
 
             if not user_has_feature(user, feature_code):
                 return Response(

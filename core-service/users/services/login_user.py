@@ -111,7 +111,7 @@ def login_user(data):
         }
     
         # 🔹 cache the session for 30 minutes to speed up subsequent logins
-        cache.set(cache_key, result, timeout=60*30)
+        cache.set(cache_key, json.dumps(result), timeout=60*30)
       
         return result
      
