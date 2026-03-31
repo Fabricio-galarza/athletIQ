@@ -1,13 +1,19 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 
 from users.serializers.login_serializers import LoginSerizalizer
 from users.services.login_user import login_user
 
 
+
+
 class LoginView(APIView):
 
+    # used to end point public
+    permission_classes = [AllowAny]
+    
     def post(self, request):
 
         # 🔹 validate incoming data structure with serializer
@@ -24,7 +30,7 @@ class LoginView(APIView):
         # 🔹 attempt login and return full session data
         try:
             result = login_user(serializer.validated_data)
-
+           
             return Response(
                 {
                     # quick access token for immediate use

@@ -1,0 +1,129 @@
+openapi: 3.0.3
+info:
+  title: Plans Modules API
+  version: 1.0.0
+  description: API para consulta de módulos configurados por plan
+
+paths:
+  /api/v1/plans/{id}/modules/:
+    get:
+      summary: Obtener módulos de un plan
+      description: |
+        Obtiene los módulos configurados para un plan, indicando cuáles están habilitados.
+        Permite visualizar la estructura base de acceso del plan.
+      tags:
+        - Plan Modules
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Identificador del plan
+          schema:
+            type: string
+            format: uuid
+
+      responses:
+        '200':
+          description: Lista de módulos del plan
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanModule'
+              examples:
+                success:
+                  value:
+                    - module_id: "uuid-module-train"
+                      module_code: "train"
+                      module_name: "Training"
+                      is_enabled: true
+                    - module_id: "uuid-module-arena"
+                      module_code: "arena"
+                      module_name: "Arena"
+                      is_enabled: false
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+        '404':
+          description: Plan no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorPlanNotFound'
+              examples:
+                not_found:
+                  value:
+                    error: "PLAN_NOT_FOUND"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PlanModule:
+      type: object
+      properties:
+        module_id:
+          type: string
+          format: uuid
+          description: Id del módulo
+        module_code:
+          type: string
+          description: Código del módulo
+        module_name:
+          type: string
+          description: Nombre del módulo
+        is_enabled:
+          type: boolean
+          description: Indica si está habilitado
+      required:
+        - module_id
+        - module_code
+        - module_name
+        - is_enabled
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+
+    ErrorPlanNotFound:
+      type: object
+      properties:
+        error:
+          type: string
+          example: PLAN_NOT_FOUND

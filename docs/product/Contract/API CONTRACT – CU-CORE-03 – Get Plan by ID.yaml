@@ -1,0 +1,89 @@
+openapi: 3.0.3
+info:
+  title: Plans API
+  version: 1.0.0
+  description: API for managing subscription plans
+
+paths:
+  /api/v1/plans/{id}/:
+    get:
+      summary: Get Plan Detail
+      description: Retrieve a specific plan by ID
+      tags:
+        - Plans
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Plan UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Plan detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+              example:
+                id: 6c39abfb-04c0-460a-94df-f0113aea9968
+                name: Basic
+                description: Basic access
+                price: "0.00"
+                is_active: true
+                created_at: 2026-03-25T10:00:00Z
+                updated_at: 2026-03-25T10:00:00Z
+
+        '404':
+          description: Plan not found
+          content:
+            application/json:
+              example:
+                error: PLAN_NOT_FOUND
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                detail: Authentication credentials were not provided.
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                error: FORBIDDEN
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PlanResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: string
+          example: "29.99"
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time

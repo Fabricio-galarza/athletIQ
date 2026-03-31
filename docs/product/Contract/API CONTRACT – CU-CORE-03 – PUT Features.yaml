@@ -1,0 +1,202 @@
+openapi: 3.0.3
+info:
+  title: Features API
+  version: 1.0.0
+  description: API para gestión de features del sistema
+
+paths:
+  /api/v1/features/{id}/:
+    put:
+      summary: Actualizar feature
+      description: |
+        Actualiza una feature existente.
+        Permite modificar su nombre, código y el módulo al que pertenece,
+        manteniendo la integridad del sistema.
+      tags:
+        - Features
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Identificador de la feature
+          schema:
+            type: string
+            format: uuid
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeatureUpdateRequest'
+            examples:
+              update_name:
+                value:
+                  name: "Advanced Metrics Pro"
+              full_update:
+                value:
+                  name: "Adaptive Training Advanced"
+                  code: "adaptive_training_advanced"
+                  module_id: "uuid-module-train"
+
+      responses:
+        '200':
+          description: Feature actualizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Feature'
+              examples:
+                success:
+                  value:
+                    id: "b71c05cd-092d-470a-9d68-f9a3619c0f71"
+                    name: "Analizing Training"
+                    code: "analize_training"
+                    created_at: "2026-03-24T22:40:07.473283Z"
+                    updated_at: "2026-03-26T15:31:48.149230Z"
+
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ErrorDuplicateCode'
+                  - $ref: '#/components/schemas/ErrorModuleNotFound'
+                  - $ref: '#/components/schemas/ErrorEmptyRequest'
+              examples:
+                duplicate_code:
+                  value:
+                    code:
+                      - "Feature already exists"
+                module_not_found:
+                  value:
+                    error: "MODULE_NOT_FOUND"
+                empty_request:
+                  value:
+                    error: "EMPTY_REQUEST"
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+        '404':
+          description: Feature no encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorFeatureNotFound'
+              examples:
+                not_found:
+                  value:
+                    error: "FEATURE_NOT_FOUND"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Feature:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - code
+        - created_at
+        - updated_at
+
+    FeatureUpdateRequest:
+      type: object
+      description: |
+        Todos los campos son opcionales, pero debe enviarse al menos uno.
+      properties:
+        name:
+          type: string
+          description: Nombre legible
+        code:
+          type: string
+          description: Identificador único
+        module_id:
+          type: string
+          format: uuid
+          description: Módulo al que pertenece
+      minProperties: 1
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+
+    ErrorFeatureNotFound:
+      type: object
+      properties:
+        error:
+          type: string
+          example: FEATURE_NOT_FOUND
+
+    ErrorModuleNotFound:
+      type: object
+      properties:
+        error:
+          type: string
+          example: MODULE_NOT_FOUND
+
+    ErrorDuplicateCode:
+      type: object
+      properties:
+        code:
+          type: array
+          items:
+            type: string
+
+    ErrorEmptyRequest:
+      type: object
+      properties:
+        error:
+          type: string
+          example: EMPTY_REQUEST

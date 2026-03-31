@@ -1,0 +1,125 @@
+openapi: 3.0.3
+info:
+  title: Plans Features API
+  version: 1.0.0
+  description: API para consulta de features configuradas por plan
+
+paths:
+  /api/v1/plans/{id}/features/:
+    get:
+      summary: Obtener features de un plan
+      description: |
+        Obtiene las features configuradas para un plan, indicando cuáles están habilitadas.
+        Permite visualizar la estructura de acceso del plan.
+      tags:
+        - Plan Features
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Identificador del plan
+          schema:
+            type: string
+            format: uuid
+
+      responses:
+        '200':
+          description: Lista de features del plan
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanFeature'
+              examples:
+                success:
+                  value:
+                    - feature_id: "16b54127-cfb6-472c-9e39-62eb6520ba13"
+                      feature_name: "Advance_Metrics"
+                      feature_code: "advance_metrics"
+                      is_enabled: true
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+        '404':
+          description: Plan no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorPlanNotFound'
+              examples:
+                not_found:
+                  value:
+                    error: "PLAN_NOT_FOUND"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PlanFeature:
+      type: object
+      properties:
+        feature_id:
+          type: string
+          format: uuid
+          description: Id de la feature
+        feature_name:
+          type: string
+          description: Nombre de la feature
+        feature_code:
+          type: string
+          description: Código de la feature (usado en lógica)
+        is_enabled:
+          type: boolean
+          description: Indica si la feature está habilitada para el plan
+      required:
+        - feature_id
+        - feature_name
+        - feature_code
+        - is_enabled
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+
+    ErrorPlanNotFound:
+      type: object
+      properties:
+        error:
+          type: string
+          example: PLAN_NOT_FOUND

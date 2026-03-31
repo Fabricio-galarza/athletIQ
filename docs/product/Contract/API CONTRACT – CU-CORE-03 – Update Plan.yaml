@@ -1,0 +1,136 @@
+openapi: 3.0.3
+info:
+  title: Plans API
+  version: 1.0.0
+  description: API for managing subscription plans
+
+paths:
+  /api/v1/plans/{id}/:
+    put:
+      summary: Update Plan
+      description: Update an existing plan
+      tags:
+        - Plans
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Plan unique identifier
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePlanRequest'
+            example:
+              name: Pro Plus
+              description: Updated plan with more features
+              price: 39.99
+              is_active: true
+      responses:
+        '200':
+          description: Plan updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanResponse'
+              example:
+                id: 6c39abfb-04c0-460a-94df-f0113aea9968
+                name: Pro Plus
+                description: Updated plan with more features
+                price: "39.99"
+                is_active: true
+                created_at: 2026-03-25T10:00:00Z
+                updated_at: 2026-03-25T14:00:00Z
+
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              examples:
+                duplicate_name:
+                  summary: Duplicate name
+                  value:
+                    error: Plan already exists
+                invalid_price:
+                  summary: Invalid price
+                  value:
+                    price:
+                      - Ensure this value is greater than or equal to 0
+                empty_request:
+                  summary: Empty request
+                  value:
+                    error: NO_DATA_PROVIDED
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                detail: Authentication credentials were not provided.
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                error: FORBIDDEN
+
+        '404':
+          description: Plan not found
+          content:
+            application/json:
+              example:
+                error: PLAN_NOT_FOUND
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UpdatePlanRequest:
+      type: object
+      description: Fields to update (at least one required)
+      properties:
+        name:
+          type: string
+          description: Unique plan name
+        description:
+          type: string
+        price:
+          type: number
+          format: decimal
+          minimum: 0
+        is_active:
+          type: boolean
+      minProperties: 1
+
+    PlanResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: string
+          example: "29.99"
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
