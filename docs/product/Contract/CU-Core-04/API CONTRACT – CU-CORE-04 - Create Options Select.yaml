@@ -1,0 +1,135 @@
+openapi: 3.0.3
+info:
+  title: Field Options API
+  version: 1.0.0
+  description: API para configuración de opciones de campos dinámicos
+
+paths:
+  /api/v1/fields/{field_id}/options/:
+    put:
+      summary: Configurar opciones de un campo
+      description: |
+        Configura las opciones de un campo tipo seleccionable.
+        Reemplaza completamente las opciones existentes.
+      tags:
+        - Field Options
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - in: path
+          name: field_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador del campo
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/FieldOptionInput'
+            examples:
+              example:
+                value:
+                  - value: "low"
+                    label: "Low"
+                    order: 1
+                  - value: "high"
+                    label: "High"
+                    order: 2
+
+      responses:
+        '200':
+          description: Opciones configuradas correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              examples:
+                success:
+                  value:
+                    message: "Options configured successfully"
+                    count: 2
+
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error400'
+              examples:
+                field_not_found:
+                  value:
+                    error: "Field not found"
+                invalid_type:
+                  value:
+                    error: "Field does not support options"
+                empty_options:
+                  value:
+                    error: "Options cannot be empty"
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    FieldOptionInput:
+      type: object
+      properties:
+        value:
+          type: string
+        label:
+          type: string
+        order:
+          type: integer
+      required:
+        - value
+
+    SuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        count:
+          type: integer
+
+    Error400:
+      type: object
+      properties:
+        error:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string

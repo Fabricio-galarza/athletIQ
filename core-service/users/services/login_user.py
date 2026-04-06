@@ -77,7 +77,7 @@ def login_user(data):
                 "fields": [
                     {
                         "name": ff.field.name,
-                        "type": ff.field.type,
+                        "type": ff.field.field_type.code,
                         "required": ff.is_required,
                         "order": ff.order
                     }

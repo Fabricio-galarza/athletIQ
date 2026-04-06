@@ -1,0 +1,202 @@
+openapi: 3.0.3
+info:
+  title: Fields API
+  version: 1.0.0
+  description: API para creación de campos dinámicos
+
+paths:
+  /api/v1/fields/:
+    post:
+      summary: Crear campo
+      description: |
+        Crea un campo reutilizable en el sistema.
+
+        Permite definir el tipo de campo (UI) y el tipo de dato (DB) mediante sus respectivos códigos.
+
+        Para campos seleccionables (select, radio, checkbox), se deben incluir opciones.
+      tags:
+        - Fields
+      security:
+        - BearerAuth: []
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FieldCreateRequest'
+            examples:
+              basic:
+                value:
+                  name: "Age"
+                  field_type_code: "number"
+                  data_type_code: "integer"
+              selectable:
+                value:
+                  name: "Intensity"
+                  field_type_code: "select"
+                  data_type_code: "varchar"
+                  options:
+                    - value: "low"
+                      label: "Low"
+                      order: 1
+                    - value: "high"
+                      label: "High"
+                      order: 2
+
+      responses:
+        '201':
+          description: Campo creado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldCreateResponse'
+              examples:
+                success:
+                  value:
+                    message: "Field created successfully"
+                    data:
+                      id: "67b5f778-1805-4dd0-80ec-c57287bb7597"
+                      name: "Intensity"
+                      field_type: "select"
+                      data_type: "varchar"
+
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ErrorValidation'
+                  - $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                missing_options:
+                  value:
+                    non_field_errors:
+                      - "Selectable fields must include options"
+                field_type_not_found:
+                  value:
+                    error: "Field type not found"
+                data_type_not_found:
+                  value:
+                    error: "Data type not found"
+                duplicate_values:
+                  value:
+                    error: "Duplicate values not allowed"
+                duplicate_labels:
+                  value:
+                    error: "Duplicate labels not allowed"
+                duplicate_order:
+                  value:
+                    error: "Duplicate order not allowed"
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    FieldCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Nombre del campo
+        field_type_code:
+          type: string
+          description: Código del tipo de campo (UI)
+        data_type_code:
+          type: string
+          description: Código del tipo de dato
+        options:
+          type: array
+          description: Lista de opciones (requerido para campos seleccionables)
+          items:
+            $ref: '#/components/schemas/FieldOptionInput'
+      required:
+        - name
+        - field_type_code
+        - data_type_code
+
+    FieldOptionInput:
+      type: object
+      properties:
+        value:
+          type: string
+          description: Valor interno
+        label:
+          type: string
+          description: Etiqueta visible
+        order:
+          type: integer
+          description: Orden
+      required:
+        - value
+
+    FieldCreateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            field_type:
+              type: string
+            data_type:
+              type: string
+
+    ErrorValidation:
+      type: object
+      properties:
+        non_field_errors:
+          type: array
+          items:
+            type: string
+
+    ErrorMessage:
+      type: object
+      properties:
+        error:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string

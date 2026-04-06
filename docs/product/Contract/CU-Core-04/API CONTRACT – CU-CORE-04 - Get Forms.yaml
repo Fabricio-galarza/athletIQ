@@ -1,0 +1,171 @@
+openapi: 3.0.3
+info:
+  title: Forms API
+  version: 1.0.0
+  description: API para consulta de formularios dinámicos
+
+paths:
+  /api/v1/forms/:
+    get:
+      summary: Obtener formularios
+      description: |
+        Obtiene la lista de formularios disponibles en el sistema.
+
+        Permite filtrar por módulo y devolver dinámicamente los campos del formulario según el deporte (sport).
+
+        Solo retorna formularios activos y habilitados para el plan del usuario autenticado.
+      tags:
+        - Forms
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - in: query
+          name: module
+          required: false
+          schema:
+            type: string
+          description: Código del módulo
+
+        - in: query
+          name: sport
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: ID del deporte para filtrar fields
+
+      responses:
+        '200':
+          description: Lista de formularios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Form'
+              examples:
+                success:
+                  value:
+                    - code: "training_session"
+                      name: "Training Session"
+                      fields:
+                        - label: "Duration"
+                          type: "number"
+                          required: true
+                          order: 1
+                          options: []
+                        - label: "Intensity"
+                          type: "select"
+                          required: true
+                          order: 2
+                          options:
+                            - value: "low"
+                              label: "Low"
+                              order: 1
+                            - value: "high"
+                              label: "High"
+                              order: 2
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Form:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Código del formulario
+        name:
+          type: string
+          description: Nombre del formulario
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/Field'
+      required:
+        - code
+        - name
+        - fields
+
+    Field:
+      type: object
+      properties:
+        label:
+          type: string
+          description: Nombre visible
+        type:
+          type: string
+          description: Tipo de campo
+        required:
+          type: boolean
+          description: Indica si es obligatorio
+        order:
+          type: integer
+          description: Orden
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/Option'
+      required:
+        - label
+        - type
+        - required
+        - order
+        - options
+
+    Option:
+      type: object
+      properties:
+        value:
+          type: string
+          description: Valor
+        label:
+          type: string
+          description: Etiqueta
+        order:
+          type: integer
+          description: Orden
+      required:
+        - value
+        - label
+        - order
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string

@@ -1,0 +1,235 @@
+openapi: 3.0.3
+info:
+  title: Forms API
+  version: 1.0.0
+  description: API para gestión de formularios
+
+paths:
+  /api/v1/forms/{form_id}/:
+    put:
+      summary: Actualizar formulario (completo)
+      description: |
+        Actualiza un formulario existente.
+
+        Aunque semánticamente es un PUT, la implementación permite actualización parcial.
+      tags:
+        - Forms
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador del formulario
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormUpdateRequest'
+            examples:
+              full_update:
+                value:
+                  name: "Training Session Updated"
+                  code: "training_session_updated"
+                  is_active: true
+
+      responses:
+        '200':
+          description: Formulario actualizado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormUpdateResponse'
+              examples:
+                success:
+                  value:
+                    message: "Form updated successfully"
+                    data:
+                      id: "67b5f778-1805-4dd0-80ec-c57287bb7597"
+                      name: "Training Session Updated"
+                      code: "training_session_updated"
+                      is_active: true
+
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorValidation'
+              examples:
+                duplicate_code:
+                  value:
+                    code:
+                      - "Form with this code already exists"
+
+        '404':
+          description: Formulario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                not_found:
+                  value:
+                    error: "Form not found"
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+    patch:
+      summary: Actualizar formulario (parcial)
+      description: |
+        Permite actualizar parcialmente un formulario.
+
+        Solo se modifican los campos enviados en la request.
+      tags:
+        - Forms
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador del formulario
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FormUpdateRequest'
+            examples:
+              partial_update:
+                value:
+                  name: "Training Session v2"
+
+      responses:
+        '200':
+          description: Formulario actualizado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormUpdateResponse'
+              examples:
+                success:
+                  value:
+                    message: "Form updated successfully"
+                    data:
+                      id: "67b5f778-1805-4dd0-80ec-c57287bb7597"
+                      name: "Training Session v2"
+                      code: "training_session"
+                      is_active: true
+
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorValidation'
+
+        '404':
+          description: Formulario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    FormUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Nombre del formulario
+        code:
+          type: string
+          description: Código único del formulario
+        is_active:
+          type: boolean
+          description: Estado del formulario
+      additionalProperties: false
+
+    FormUpdateResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            code:
+              type: string
+            is_active:
+              type: boolean
+
+    ErrorValidation:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+
+    ErrorMessage:
+      type: object
+      properties:
+        error:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string

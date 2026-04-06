@@ -12,4 +12,7 @@ urlpatterns = [
 
     # plan urls
     path("api/v1/", include("plans.urls")),
+
+    # forms url
+    path('api/v1/', include('forms.urls'))
 ]
