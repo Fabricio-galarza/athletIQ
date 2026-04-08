@@ -1,0 +1,99 @@
+openapi: 3.0.0
+info:
+  title: Forms API
+  version: 1.0.0
+  description: API CONTRACT – CU-FORMS-01 – Create Form
+
+paths:
+  /api/v1/forms/:
+    post:
+      summary: Create Form
+      description: >
+        Crea un nuevo formulario en el sistema.
+        Permite registrar un formulario asociado a un módulo existente mediante su module_code.
+      tags:
+        - Forms
+      security:
+        - BearerAuth: []
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - code
+                - module_code
+              properties:
+                name:
+                  type: string
+                  example: User Registration Form
+                code:
+                  type: string
+                  example: USR_REG_FORM
+                module_code:
+                  type: string
+                  example: USER_MODULE
+
+      responses:
+        "201":
+          description: Form created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Form created successfully
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                        example: b12c3d45-6789-4abc-9012-abcdef123456
+                      name:
+                        type: string
+                        example: User Registration Form
+                      code:
+                        type: string
+                        example: USR_REG_FORM
+
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              examples:
+                duplicate_code:
+                  summary: Code already exists
+                  value:
+                    code:
+                      - Form with this code already exists
+                module_not_found:
+                  summary: Module not found
+                  value:
+                    error: Module not found
+
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                detail: Authentication credentials were not provided.
+
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                detail: You do not have permission to perform this action.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
