@@ -22,6 +22,7 @@ class Form(BaseModel):
 
     def __str__(self):
         return self.name
+
     
 # defines daabase data types (varchar, integer, boolean, date, etc)
 class DataType(BaseModel):

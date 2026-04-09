@@ -13,6 +13,9 @@ class FormCreateView(APIView):
     permission_classes = [IsAdminUser]
 
     def post(self, request):
+
+        #get current user
+        user       = request.user
         serializer = FormSerializer(data=request.data)
 
         if not serializer.is_valid():
@@ -22,7 +25,7 @@ class FormCreateView(APIView):
             )
 
         try:
-            form = create_form(serializer.validated_data)
+            form = create_form(serializer.validated_data, user)
             return Response(
                 {
                     "message": "Form created successfully",

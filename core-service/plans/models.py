@@ -1,5 +1,6 @@
 from django.db import models
 from common.models import BaseModel
+from django.utils import timezone
 
 
 # defines subscription plans available in the system
@@ -41,13 +42,16 @@ class UserPlan(BaseModel):
     )
 
     # when the plan starts
-    start_date = models.DateTimeField(auto_now_add=True)
+    start_date = models.DateField(default=timezone.now)
 
     # when the plan ends (null = active or lifetime)
     end_date = models.DateTimeField(null=True, blank=True)
 
     # indicates if this is the current active plan
     is_active = models.BooleanField(default=True)
+
+    # Automatic renewal, future implementation
+    auto_renew = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.email} - {self.plan.name}"

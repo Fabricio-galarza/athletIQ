@@ -1,9 +1,9 @@
 from plans.models import PlanForm, PlanModule
 from forms.models import Form
 from rest_framework.exceptions import ValidationError
+from django.utils import timezone
 
-
-def set_plan_forms(plan, forms_data):
+def set_plan_forms(plan, forms_data, user = None):
     # Loop through input data
     for item in forms_data:
         
@@ -33,7 +33,9 @@ def set_plan_forms(plan, forms_data):
         PlanForm.objects.update_or_create(
             plan=plan,
             form=form,
-            defaults={"is_enabled": is_enabled}
+            defaults={"is_enabled": is_enabled},
+            created_by = user,
+            created_at = timezone.now()
         )
 
     # Success
