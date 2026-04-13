@@ -53,6 +53,9 @@ class FormUpdateView(APIView):
     def put(self, request, form_id):
         """complete form updated"""
         serializer = FormUpdateSerializer(data=request.data)
+
+        # get current user
+        user = request.user
         
         if not serializer.is_valid():
             return Response(
@@ -61,7 +64,7 @@ class FormUpdateView(APIView):
             )
         
         try:
-            form = update_form(form_id, serializer.validated_data)
+            form = update_form(form_id, serializer.validated_data, user)
             return Response(
                 {
                     "message": "Form updated successfully",
@@ -118,6 +121,9 @@ class FormToggleStatusView(APIView):
     permission_classes = [IsAdminUser]
 
     def patch(self, request, form_id):
+
+        # get current user
+        user      = request.user
         is_active = request.data.get('is_active')
         
         if is_active is None:
@@ -133,7 +139,7 @@ class FormToggleStatusView(APIView):
             )
         
         try:
-            form = toggle_form_status(form_id, is_active)
+            form = toggle_form_status(form_id, is_active, user)
             status_text = "activated" if is_active else "deactivated"
             return Response(
                 {

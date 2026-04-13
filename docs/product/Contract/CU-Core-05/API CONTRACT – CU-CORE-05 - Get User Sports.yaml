@@ -1,0 +1,98 @@
+openapi: 3.0.3
+info:
+  title: User Sports API
+  version: 1.0.0
+  description: API para gestión de deportes del usuario
+
+paths:
+  /api/v1/users/me/sports/:
+    get:
+      summary: Obtener deportes del usuario
+      description: |
+        Retorna la lista de deportes asociados al usuario autenticado.
+
+        - Solo requiere autenticación
+        - No depende del plan activo
+        - Puede retornar lista vacía
+
+      tags:
+        - User Sports
+
+      security:
+        - BearerAuth: []
+
+      responses:
+        '200':
+          description: Lista de deportes del usuario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sport'
+              examples:
+                success:
+                  value:
+                    - id: "67b5f778-1805-4dd0-80ec-c57287bb7597"
+                      name: "Running"
+                      is_active: true
+                    - id: "b12c3d45-6789-4abc-9012-abcdef123456"
+                      name: "Swimming"
+                      is_active: true
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Sport:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        is_active:
+          type: boolean
+      required:
+        - id
+        - name
+        - is_active
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string

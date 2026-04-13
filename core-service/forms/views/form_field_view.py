@@ -13,6 +13,9 @@ class FormFieldConfigView(APIView):
 
     def put(self, request, form_id):
 
+        # get current user
+        user = request.user
+
         # validate input (list of fields)
         serializer = FormFieldSerializer(data=request.data, many=True)
 
@@ -23,7 +26,7 @@ class FormFieldConfigView(APIView):
             )
 
         try:
-            form_fields = set_form_fields(form_id, serializer.validated_data)
+            form_fields = set_form_fields(form_id, serializer.validated_data, user)
 
             return Response(
                 {
