@@ -23,9 +23,12 @@ class FeatureListCreateView(APIView):
     def post(self, request):
 
         serializer = FeatureSerializer(data=request.data)
-
+        
+        # get current user
+        user = request.user
+        
         if serializer.is_valid():
-            feature = create_feature(serializer.validated_data)
+            feature = create_feature(serializer.validated_data, user)
 
             return Response(
                 FeatureSerializer(feature).data,

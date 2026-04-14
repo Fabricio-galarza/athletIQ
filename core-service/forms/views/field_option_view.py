@@ -12,7 +12,8 @@ class FieldOptionConfigView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request, field_id):
-
+        # get auth user
+        user = request.user
         serializer = FieldOptionSerializer(data=request.data, many=True)
 
         if not serializer.is_valid():
@@ -21,7 +22,8 @@ class FieldOptionConfigView(APIView):
         try:
             options = set_field_options(
                 field_id,
-                serializer.validated_data
+                serializer.validated_data,
+                user
             )
 
             return Response(

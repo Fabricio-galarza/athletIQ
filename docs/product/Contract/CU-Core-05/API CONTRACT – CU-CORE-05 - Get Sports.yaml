@@ -1,0 +1,94 @@
+openapi: 3.0.3
+info:
+  title: Sports API
+  version: 1.0.0
+  description: API para gestión de deportes
+
+paths:
+  /api/v1/sports/:
+    get:
+      summary: Obtener deportes disponibles
+      description: |
+        Retorna la lista de deportes activos en el sistema.
+
+        Solo se incluyen deportes con is_active = true.
+        Requiere autenticación.
+      tags:
+        - Sports
+      security:
+        - BearerAuth: []
+
+      responses:
+        '200':
+          description: Lista de deportes obtenida correctamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sport'
+              examples:
+                success:
+                  value:
+                    - id: "67b5f778-1805-4dd0-80ec-c57287bb7597"
+                      name: "Running"
+                      is_active: true
+                    - id: "b12c3d45-6789-4abc-9012-abcdef123456"
+                      name: "Swimming"
+                      is_active: true
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Sport:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador del deporte
+        name:
+          type: string
+          description: Nombre del deporte
+        is_active:
+          type: boolean
+          description: Indica si el deporte está activo
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string

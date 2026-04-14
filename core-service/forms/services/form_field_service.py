@@ -1,11 +1,13 @@
 from django.db import transaction
+from django.utils.timezone import now
+
 from forms.models import Form, FormField, Field
 from sports.models import Sport
 
 
 # configure fields for a form (replace all configuration)
 @transaction.atomic
-def set_form_fields(form_id, fields_data):
+def set_form_fields(form_id, fields_data, user = None):
 
     try:
         form = Form.objects.get(id=form_id)
@@ -48,12 +50,15 @@ def set_form_fields(form_id, fields_data):
 
         # create form field
         form_field = FormField.objects.create(
-            form=form,
-            field=field,
-            sport=sport,
-            label=item.get("label", field.name),
-            is_required=item.get("is_required", False),
-            order=item.get("order", 0)
+            form        = form,
+            field       = field,
+            sport       = sport,
+            label       = item.get("label", field.name),
+            is_required = item.get("is_required", False),
+            order       = item.get("order", 0),
+            created_by  = user,
+            created_at  = now()
+            
         )
 
         created_fields.append(form_field)

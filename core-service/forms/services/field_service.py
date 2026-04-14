@@ -3,7 +3,7 @@ from forms.models import Field, FieldType, DataType, FieldOPtion
 
 
 @transaction.atomic
-def create_field(validated_data):
+def create_field(validated_data, user = None):
 
     field_type_code = validated_data.pop("field_type_code")
     data_type_code = validated_data.pop("data_type_code")
@@ -24,9 +24,10 @@ def create_field(validated_data):
 
     # create field
     field = Field.objects.create(
-        field_type=field_type,
-        data_type=data_type,
-        **validated_data
+        field_type = field_type,
+        data_type  = data_type,
+        **validated_data,
+        created_by = user
     )
 
     # create options if needed
@@ -48,9 +49,10 @@ def create_field(validated_data):
         for opt in options_data:
             FieldOPtion.objects.create(
                 field=field,
-                value=opt["value"],
-                label=opt.get("label", opt["value"]),
-                order=opt.get("order", 0)
+                value      = opt["value"],
+                label      = opt.get("label", opt["value"]),
+                order      = opt.get("order", 0),
+                created_by = user
             )
 
     return field

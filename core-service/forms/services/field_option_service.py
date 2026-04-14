@@ -3,7 +3,7 @@ from forms.models import Field, FieldOPtion
 
 
 @transaction.atomic
-def set_field_options(field_id, options_data):
+def set_field_options(field_id, options_data, user=None):
 
     try:
         field = Field.objects.get(id=field_id)
@@ -44,7 +44,8 @@ def set_field_options(field_id, options_data):
             field=field,
             value=opt["value"],
             label=opt.get("label", opt["value"]),
-            order=opt.get("order", 0)
+            order=opt.get("order", 0),
+            created_by=user
         )
 
         created_options.append(option)

@@ -1,12 +1,15 @@
 # forms/services/form_service.py
 from django.db import transaction
+from uuid import UUID
+from django.utils import timezone
+
 from forms.models import Form
 from modules.models import Module
-from uuid import UUID
+
 
 # creates a new form in the system
 @transaction.atomic
-def create_form(validated_data):
+def create_form(validated_data, user = None):
     module_code = validated_data.pop("module_code")
     
     try:
@@ -15,13 +18,17 @@ def create_form(validated_data):
         raise ValueError("Module not found")
     
     validated_data.setdefault('is_active', False)
-    form = Form.objects.create(module=module, **validated_data)
+    form = Form.objects.create(
+        module     = module, 
+        **validated_data, 
+        created_by = user,
+        created_at = timezone.now())
     return form
 
 
 # Service to update a form
 @transaction.atomic
-def update_form(form_id, validated_data):
+def update_form(form_id, validated_data, user = None):
     # Handle both UUID and integer
     try:
         if isinstance(form_id, str) or isinstance(form_id, UUID):
@@ -34,6 +41,11 @@ def update_form(form_id, validated_data):
     # Update only the fields provided
     for field, value in validated_data.items():
         setattr(form, field, value)
+     
+     # registerin audit
+    if user:
+        form.updated_by = user
+    form.updated_at = timezone.now()
     
     form.save()
     return form
@@ -41,7 +53,7 @@ def update_form(form_id, validated_data):
 
 # Specific service to activate/deactivate a form
 @transaction.atomic
-def toggle_form_status(form_id, is_active):
+def toggle_form_status(form_id, is_active, user = None):
     # Handle both UUID and integer
     try:
         if isinstance(form_id, str) or isinstance(form_id, UUID):
@@ -50,6 +62,11 @@ def toggle_form_status(form_id, is_active):
             form = Form.objects.get(id=form_id)
     except (Form.DoesNotExist, ValueError):
         raise ValueError("Form not found")
+    
+    # registerin audit
+    if user:
+        form.updated_by = user
+    form.updated_at = timezone.now()
     
     form.is_active = is_active
     form.save()

@@ -15,7 +15,7 @@ class PlanFeatureView(APIView):
 
     # helper to get plan
     def get_plan(self, pk):
-        print("BEFORE TRY")
+    
         try:
             return Plan.objects.get(pk=pk)
         except Plan.DoesNotExist:
@@ -23,7 +23,7 @@ class PlanFeatureView(APIView):
         
     # get all features for a plan
     def get(self, request, pk):
-        print("IN GET")
+    
         plan = self.get_plan(pk)
 
         if not plan:
@@ -52,6 +52,9 @@ class PlanFeatureView(APIView):
 
         plan = self.get_plan(pk)
 
+        # get current user
+        user = request.user
+
         if not plan:
             return Response(
                 {"error": "PLAN_NOT_FOUND"},
@@ -62,7 +65,7 @@ class PlanFeatureView(APIView):
 
         if serializer.is_valid():
 
-            set_plan_features(plan, serializer.validated_data)
+            set_plan_features(plan, serializer.validated_data, user)
 
             return Response(
                 {"message": "Features updated successfully"},
