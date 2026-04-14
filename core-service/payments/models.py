@@ -13,7 +13,7 @@ class Payment(BaseModel):
     ]
 
     # billing Type options (future ready)
-    BILLING_TYPE_CHOISES = [
+    BILLING_TYPE_CHOICES = [
         ("one", "One Time"),
         ("suscription", "Subscription"),
     ]
@@ -55,7 +55,7 @@ class Payment(BaseModel):
     #billing type (future use)
     billing_type = models.CharField(
         max_length=20,
-        choices=BILLING_TYPE_CHOISES,
+        choices=BILLING_TYPE_CHOICES,
         default="on_time"
     )
 
