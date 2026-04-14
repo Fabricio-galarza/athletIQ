@@ -50,7 +50,7 @@ def register_user(data):
 
         # 🔹 get default role
         try:
-            role = Role.objects.get(name="athlete")
+            role = Role.objects.get(code="athlete")
         except ObjectDoesNotExist:
             logger.error("Rol no configurado", exc_info=True)
             raise Exception("ROL NO CONFIGURADO")

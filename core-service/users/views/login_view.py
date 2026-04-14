@@ -34,7 +34,7 @@ class LoginView(APIView):
             return Response(
                 {
                     # quick access token for immediate use
-                    "token": result["tokens"]["access"],
+                    "token": result["token"],
                     "user": {
                         "id": result["user"]["id"],
                         "email": result["user"]["email"],
@@ -45,7 +45,7 @@ class LoginView(APIView):
                     "sports": result["sports"],
                     "forms": result["forms"],
                     # full token pair so frontend can handle refresh flow
-                    "tokens": result["tokens"],
+                    "token-refresh": result["token-refresh"],
                     "message": "Inicio de sesión exitoso"
                 },
                 status=status.HTTP_200_OK

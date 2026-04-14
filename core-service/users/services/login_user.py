@@ -104,10 +104,7 @@ def login_user(data):
             "features": list(features),
             "sports": list(sports),
             "forms": forms,
-            "tokens": {
-                "access": str(refresh.access_token),
-                "refresh": str(refresh)
-            }
+            "token-refresh" : str(refresh),
         }
     
         # 🔹 cache the session for 30 minutes to speed up subsequent logins

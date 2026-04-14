@@ -6,7 +6,11 @@ from common.models import BaseModel
 # examples: admin, coach, athlete
 class Role(BaseModel):
 
-    name = models.CharField(max_length=100, unique=True)
+    #human-readable name 
+    name = models.CharField(max_length=100)
+     
+    # unique identifier used in code
+    code = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.name
