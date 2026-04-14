@@ -49,6 +49,9 @@ class PlanModuleView(APIView):
 
         plan = self.get_plan(pk)
 
+        # get current user
+        user = request.user
+
         if not plan:
             return Response(
                 {"error": "PLAN_NOT_FOUND"},
@@ -59,7 +62,7 @@ class PlanModuleView(APIView):
 
         if serializer.is_valid():
 
-            set_plan_modules(plan, serializer.validated_data)
+            set_plan_modules(plan, serializer.validated_data, user)
 
             return Response(
                 {"message": "Modules updated successfully"},

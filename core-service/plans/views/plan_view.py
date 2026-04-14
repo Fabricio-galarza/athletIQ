@@ -26,8 +26,11 @@ class PlanListCreateView(APIView):
 
         serializer = PlanSerializer(data=request.data)
 
+        # get current user
+        user       = request.user
+
         if serializer.is_valid():
-            plan = create_plan(serializer.validated_data)
+            plan = create_plan(serializer.validated_data, user)
 
             return Response(
                 PlanSerializer(plan).data,
@@ -67,6 +70,9 @@ class PlanDetailView(APIView):
 
         plan = self.get_object(pk)
 
+        # get current user
+        user = request.user
+
         if not plan:
             return Response(
                 {"error": "PLAN_NOT_FOUND"},
@@ -76,7 +82,7 @@ class PlanDetailView(APIView):
         serializer = PlanSerializer(plan, data=request.data)
 
         if serializer.is_valid():
-            updated_plan = update_plan(plan, serializer.validated_data)
+            updated_plan = update_plan(plan, serializer.validated_data, user)
 
             return Response(
                 PlanSerializer(updated_plan).data,

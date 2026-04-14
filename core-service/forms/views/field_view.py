@@ -13,6 +13,8 @@ class FieldCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        # get user auth
+        user = request.user
 
         # validate request data
         serializer = FieldSerializer(data=request.data)
@@ -25,7 +27,7 @@ class FieldCreateView(APIView):
 
         try:
             # call service
-            field = create_field(serializer.validated_data)
+            field = create_field(serializer.validated_data, user)
 
             return Response(
                 {

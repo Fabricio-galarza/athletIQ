@@ -1,0 +1,152 @@
+openapi: 3.0.3
+info:
+  title: Payments API
+  version: 1.0.0
+  description: API para gestión de pagos
+
+paths:
+  /api/v1/payments/:
+    post:
+      summary: Crear pago
+      description: |
+        Crea un pago asociado a un plan seleccionado por el usuario autenticado.
+
+        El sistema genera automáticamente:
+        - El monto (amount) basado en el precio del plan
+        - El estado inicial (status = pending)
+        - Un identificador externo (external_id)
+
+        Representa una intención de pago.
+      tags:
+        - Payments
+      security:
+        - BearerAuth: []
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentCreateRequest'
+            examples:
+              create_payment:
+                value:
+                  plan_id: "67b5f778-1805-4dd0-80ec-c57287bb7597"
+
+      responses:
+        '201':
+          description: Pago creado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              examples:
+                success:
+                  value:
+                    id: "b12c3d45-6789-4abc-9012-abcdef123456"
+                    amount: 49.99
+                    status: "pending"
+                    created_at: "2026-04-10T14:30:00Z"
+
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ErrorValidation'
+                  - $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                plan_not_found:
+                  value:
+                    error: "PLAN_NOT_FOUND"
+                validation_error:
+                  value:
+                    plan_id:
+                      - "This field is required."
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PaymentCreateRequest:
+      type: object
+      properties:
+        plan_id:
+          type: string
+          format: uuid
+          description: Identificador del plan
+      required:
+        - plan_id
+
+    PaymentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: float
+          description: Monto del pago (tomado del plan)
+        status:
+          type: string
+          description: Estado del pago
+          enum:
+            - pending
+            - completed
+            - failed
+        created_at:
+          type: string
+          format: date-time
+
+    ErrorValidation:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+
+    ErrorMessage:
+      type: object
+      properties:
+        error:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string

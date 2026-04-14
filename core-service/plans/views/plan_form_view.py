@@ -49,6 +49,9 @@ class PlanFormView(APIView):
 
     def put(self, request, pk):
 
+        # get current user
+        user = request.user
+
         # Get plan instance
         plan = self.get_plan(pk)
 
@@ -62,7 +65,7 @@ class PlanFormView(APIView):
         if serializer.is_valid():
 
             # Update plan forms
-            set_plan_forms(plan, serializer.validated_data)
+            set_plan_forms(plan, serializer.validated_data, user)
 
             return Response(
                 {"message": "Forms updated successfully"}
