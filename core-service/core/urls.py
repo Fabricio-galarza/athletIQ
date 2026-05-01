@@ -20,5 +20,7 @@ urlpatterns = [
     path('api/v1/', include('payments.urls')),
 
     #sports urls
-    path('api/v1/', include('sports.urls'))
+    path('api/v1/', include('sports.urls')),
+
+    path('api/v1/users/me/context/', AccessMeView.as_view(), name='user-context'),
 ]

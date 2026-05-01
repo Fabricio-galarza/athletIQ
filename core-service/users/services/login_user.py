@@ -12,9 +12,7 @@ from plans.models import Feature, Plan
 from sports.models import Sport
 from forms.models import Form
 
-
 logger = logging.getLogger(__name__)
-
 
 @transaction.atomic
 def login_user(data):
@@ -45,7 +43,7 @@ def login_user(data):
             return json.loads(cached)
 
         # 🔹 fetch roles assigned to the user
-        roles = Role.objects.filter(user_roles__user=user).values_list("name", flat=True)
+        roles = user.user_roles.values_list('role__name', flat=True)
         
         # 🔹 fetch active plans assigned to the user
         plans = Plan.objects.filter(user_plans__user=user).values_list("name", flat=True)
@@ -57,7 +55,7 @@ def login_user(data):
         ).values_list('code', flat=True)
         
         # 🔹 fetch sports practiced by the user
-        sports = Sport.objects.filter(user_sports__user=user).values_list('name', flat=True)
+        sports_queryset = Sport.objects.filter(user_sports__user=user)
         
         # 🔹 fetch active forms available for the user's sports
         # prefetch_related avoids N+1 queries when accessing form_fields and their fields
@@ -71,21 +69,33 @@ def login_user(data):
         
         # 🔹 serialize forms with their fields into a flat structure
         forms = [
-            {
-                "name": form.name,
-                "module": form.module.name,
-                "fields": [
                     {
-                        "name": ff.field.name,
-                        "type": ff.field.field_type.code,
-                        "required": ff.is_required,
-                        "order": ff.order
+                        "id": str(form.id),
+                        "name": form.name,
+                        "code": form.code,
+                        "module": form.module.name,
+                        "fields": [
+                            {
+                                "id": str(ff.field.id),  # 🔥 Agregar field_id
+                                "name": ff.field.name,
+                                "label": ff.label or ff.field.label,
+                                "type": ff.field.field_type.code,
+                                "required": ff.is_required,
+                                "order": ff.order,
+                                "options": [
+                                    {
+                                        "value": opt.value,
+                                        "label": opt.label or opt.value,
+                                        "order": opt.order
+                                    }
+                                    for opt in ff.field.options.all().order_by('order')
+                                ] if ff.field.field_type.code in ['select', 'radio', 'checkbox'] else []
+                            }
+                            for ff in form.form_fields.all().order_by('order')
+                        ]
                     }
-                    for ff in form.form_fields.all().order_by('order')
+                    for form in forms_qs
                 ]
-            }
-            for form in forms_qs
-        ]
         
         # 🔹 generate JWT tokens for the session
         # access token: short-lived, used in every request
@@ -102,7 +112,10 @@ def login_user(data):
             "roles": list(roles),
             "plans": list(plans),
             "features": list(features),
-            "sports": list(sports),
+            "sports": [
+                        {"id": str(sport.id), "name": sport.name}
+                        for sport in sports_queryset
+            ],
             "forms": forms,
             "tokens": {
                 "access": str(refresh.access_token),

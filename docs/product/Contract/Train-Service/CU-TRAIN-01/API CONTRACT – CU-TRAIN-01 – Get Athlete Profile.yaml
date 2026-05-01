@@ -1,0 +1,161 @@
+# API CONTRACT – CU-TRAIN-01 – Get Athlete Profile.yaml
+
+openapi: 3.0.3
+info:
+  title: Athlete Profile API
+  version: 1.0.0
+  description: API para obtener perfil del atleta por deporte
+
+paths:
+  /api/v1/athlete/profile/{sport_id}:
+    get:
+      summary: Get athlete profile by sport
+      description: |
+        Returns complete athlete profile for a specific sport including:
+        - General profile
+        - Sport-specific values
+        - Health profile
+        - Training structure
+        - Active goal
+      tags:
+        - Athlete Profile
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: path
+          name: sport_id
+          required: true
+          schema:
+            type: string
+          description: Sport name (e.g., Running, CrossFit)
+          example: "Running"
+
+      responses:
+        '200':
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AthleteProfileResponse'
+              example:
+                profile:
+                  id: "9b52db4f-dde6-4a7c-b004-05d1917e8f74"
+                  user_id: "a9f33700-a2d1-47a4-890c-247f7eb6092a"
+                sport_profile:
+                  id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                  sport_id: "Running"
+                  values:
+                    "d6fe133d-a790-4938-89c4-43fe6b92510d": "intermediate"
+                    "7f378a00-9e2c-4ccf-a996-fb3b814d3c0b": "3"
+                health:
+                  has_data: false
+                  values: {}
+                training_structure:
+                  has_data: false
+                  values: {}
+                active_goal:
+                  has_data: false
+                  values: {}
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error404'
+              example:
+                detail: "AthleteSportProfile with id Running not found"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    AthleteProfileResponse:
+      type: object
+      properties:
+        profile:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            user_id:
+              type: string
+              format: uuid
+        sport_profile:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            sport_id:
+              type: string
+            values:
+              type: object
+              additionalProperties:
+                type: string
+        health:
+          type: object
+          properties:
+            has_data:
+              type: boolean
+            values:
+              type: object
+        training_structure:
+          type: object
+          properties:
+            has_data:
+              type: boolean
+            values:
+              type: object
+        active_goal:
+          type: object
+          properties:
+            has_data:
+              type: boolean
+            values:
+              type: object
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+    Error404:
+      type: object
+      properties:
+        detail:
+          type: string

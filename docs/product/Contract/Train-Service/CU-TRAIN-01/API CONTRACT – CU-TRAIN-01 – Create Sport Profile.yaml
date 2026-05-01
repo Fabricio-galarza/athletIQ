@@ -1,0 +1,177 @@
+# API CONTRACT – CU-TRAIN-01 – Create Sport Profile.yaml
+
+openapi: 3.0.3
+info:
+  title: Athlete Sport Profile API
+  version: 1.0.0
+  description: API para registro de perfil deportivo del atleta
+
+paths:
+  /api/v1/athlete/sport-profile:
+    post:
+      summary: Create athlete sport profile
+      description: |
+        Creates or updates athlete's complete sport profile.
+        Data is organized by form code and validated against Core forms.
+      tags:
+        - Athlete Profile
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSportProfileRequest'
+            example:
+              sport_id: "Running"
+              form_data:
+                athlete_profile:
+                  level: "intermediate"
+                  experience_years: 3
+                  weekly_frequency: 4
+                  best_5k_time: 22.5
+                  best_10k_time: 48.0
+                  primary_goal: "improve_endurance"
+                athlete_health_profile:
+                  injuries: "none"
+                  restrictions: "none"
+                athlete_training_structure:
+                  days_per_week: 4
+                  preferred_time: "morning"
+                athlete_goal:
+                  target_date: "2026-12-31"
+                  primary_goal: "improve_endurance"
+
+      responses:
+        '201':
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSportProfileResponse'
+              example:
+                message: "Sport profile created successfully"
+                profile_id: "9b52db4f-dde6-4a7c-b004-05d1917e8f74"
+                sport_profile_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                has_sufficient_data: false
+                requires_test: true
+                missing_fields: ["experience_years", "weekly_frequency"]
+
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorValidation'
+              example:
+                error: "VALIDATION_ERROR"
+                message: "Form validation failed"
+                details:
+                  level: ["Field 'level' is required"]
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              example:
+                detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              example:
+                error: "FORBIDDEN"
+                detail: "Athlete role required"
+
+        '409':
+          description: Conflict - Sport not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorValidation'
+              example:
+                error: "VALIDATION_ERROR"
+                message: "Sport 'Running' is not configured for this user"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+      description: Base64 encoded user context from Core login
+
+  schemas:
+    CreateSportProfileRequest:
+      type: object
+      required:
+        - sport_id
+        - form_data
+      properties:
+        sport_id:
+          type: string
+          example: "Running"
+        form_data:
+          type: object
+          additionalProperties:
+            type: object
+          example:
+            athlete_profile:
+              level: "intermediate"
+              experience_years: 3
+
+    CreateSportProfileResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        profile_id:
+          type: string
+          format: uuid
+        sport_profile_id:
+          type: string
+          format: uuid
+        has_sufficient_data:
+          type: boolean
+        requires_test:
+          type: boolean
+        missing_fields:
+          type: array
+          items:
+            type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+    ErrorValidation:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object

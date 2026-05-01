@@ -93,7 +93,7 @@ class FieldOPtion(BaseModel):
     order = models.IntegerField()
 
     def __str__(self):
-        return self.value
+        return f"{self.field.name} - {self.label}"
     
 
 # configuration of a field inside a form

@@ -1,23 +1,22 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-
 from core.services.access_service import get_user_access_context
 
 
-# endpoint that returns current user's access context
 class AccessMeView(APIView):
-
-    # require authenticated user
+    """
+    Endpoint that returns current user's complete access context.
+    Used by Train service and other modules.
+    
+    GET /api/v1/users/me/context/
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-
-        # get access context
         context = get_user_access_context(request.user)
 
-        # if user has no active plan
-        if not context:
+        if context.get("plan") is None:
             return Response(
                 {"error": "NO_ACTIVE_PLAN"},
                 status=404

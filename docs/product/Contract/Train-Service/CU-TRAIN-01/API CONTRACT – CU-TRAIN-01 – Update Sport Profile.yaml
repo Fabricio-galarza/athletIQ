@@ -1,0 +1,163 @@
+# API CONTRACT – CU-TRAIN-01 – Update Sport Profile.yaml
+
+openapi: 3.0.3
+info:
+  title: Athlete Sport Profile API
+  version: 1.0.0
+  description: API para actualización parcial de perfil deportivo
+
+paths:
+  /api/v1/athlete/sport-profile/{sport_id}:
+    patch:
+      summary: Update athlete sport profile
+      description: |
+        Updates specific fields of an athlete's sport profile.
+        Only provided fields will be updated (partial update).
+        Useful for adding missing fields like age_range and gender.
+      tags:
+        - Athlete Profile
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: path
+          name: sport_id
+          required: true
+          schema:
+            type: string
+          description: Sport name (e.g., Running)
+          example: "Running"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSportProfileRequest'
+            example:
+              form_data:
+                athlete_profile:
+                  "15a4a3c9-0f3f-414e-a86c-740691d9f15f": "26-35"
+                  "c7b97ab4-f856-4c0b-81d9-d761366c1914": "male"
+
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateSportProfileResponse'
+              example:
+                message: "Sport profile updated successfully"
+                profile_id: "9b52db4f-dde6-4a7c-b004-05d1917e8f74"
+                sport_profile_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                updated_fields:
+                  - "athlete_profile.15a4a3c9-0f3f-414e-a86c-740691d9f15f"
+                  - "athlete_profile.c7b97ab4-f856-4c0b-81d9-d761366c1914"
+                has_sufficient_data: true
+                requires_test: false
+
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorValidation'
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error404'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    UpdateSportProfileRequest:
+      type: object
+      required:
+        - form_data
+      properties:
+        form_data:
+          type: object
+          additionalProperties:
+            type: object
+          description: Fields to update organized by form code
+          example:
+            athlete_profile:
+              "field_id": "value"
+
+    UpdateSportProfileResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        profile_id:
+          type: string
+          format: uuid
+        sport_profile_id:
+          type: string
+          format: uuid
+        updated_fields:
+          type: array
+          items:
+            type: string
+        has_sufficient_data:
+          type: boolean
+        requires_test:
+          type: boolean
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+    Error404:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    ErrorValidation:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
