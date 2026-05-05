@@ -1,0 +1,132 @@
+
+---
+
+### Archivo: `API CONTRACT – CU-TRAIN-02 – Get Active Training Structure.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Training Structure API
+  version: 1.0.0
+  description: API para obtener estructura de entrenamiento activa
+
+paths:
+  /api/v1/training-structure/{sport_id}:
+    get:
+      summary: Get active training structure
+      description: |
+        Returns the active training structure for a specific sport.
+        Includes days per week, weekly schedule, availability, and equipment.
+      tags:
+        - Training Structure
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: path
+          name: sport_id
+          required: true
+          schema:
+            type: string
+          description: Sport name (e.g., Running, CrossFit)
+          example: "Running"
+
+      responses:
+        '200':
+          description: Training structure retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrainingStructureResponse'
+              examples:
+                with_structure:
+                  value:
+                    has_structure: true
+                    structure_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                    sport_id: "Running"
+                    is_active: true
+                    created_at: "2026-01-15T10:30:00Z"
+                    values:
+                      days_per_week: "6"
+                      preferred_time: "morning"
+                      equipment: "[\"running_shoes\",\"dumbbells\"]"
+                without_structure:
+                  value:
+                    has_structure: false
+                    message: "No active training structure found for this sport"
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+        '404':
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error404'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    TrainingStructureResponse:
+      type: object
+      properties:
+        has_structure:
+          type: boolean
+        structure_id:
+          type: string
+          format: uuid
+        sport_id:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        values:
+          type: object
+          additionalProperties:
+            type: string
+        message:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+    Error404:
+      type: object
+      properties:
+        detail:
+          type: string

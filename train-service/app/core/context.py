@@ -29,8 +29,20 @@ class FormField:
         self.type: str = data.get("type", "")
         self.required: bool = data.get("required", False)
         self.order: int = data.get("order", 0)
-        self.options: List[Dict] = data.get("options", [])
-    
+        
+        # Get options based on field type
+        self.options: List[Dict] = []
+        
+        # For multiselect, options are in UI-config
+        if self.type == "multiselect":
+            ui_config = data.get("UI-config", {})
+            self.options = ui_config.get("options", [])
+            self.ui_config = ui_config
+        else:
+            # For regular select/radio, options are directly in 'options'
+            self.options = data.get("options", [])
+            self.ui_config = data.get("UI-config", {})
+
     def validate(self, value: Any) -> tuple:
         """Validate a value against this field definition."""
         if self.required and (value is None or value == ""):
@@ -45,6 +57,21 @@ class FormField:
             except (ValueError, TypeError):
                 return False, f"Field '{self.name}' must be a number"
         
+        # For multiselect, value should be a list
+        elif self.type == "multiselect" and self.options:
+            valid_values = [opt["value"] for opt in self.options]
+            
+            # If value is a list, validate each item
+            if isinstance(value, list):
+                for item in value:
+                    if str(item) not in valid_values:
+                        return False, f"Field '{self.name}' contains invalid value '{item}'. Must be one of: {valid_values}"
+            else:
+                # If single value, validate as string
+                if str(value) not in valid_values:
+                    return False, f"Field '{self.name}' must be one of: {valid_values}"
+        
+        # For regular select/radio
         elif self.type in ["select", "radio"] and self.options:
             valid_values = [opt["value"] for opt in self.options]
             if str(value) not in valid_values:

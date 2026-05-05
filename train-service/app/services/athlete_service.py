@@ -101,6 +101,7 @@ class AthleteService:
         profile = self._get_or_create_profile()
         sport_profile = self._get_or_create_sport_profile(profile.id, sport_id)
         
+        # Process athlete_profile form (main metrics)
         form = context.get_form("athlete_profile")
         if form and profile_data:
             validated = form.validate_data(profile_data)
@@ -109,6 +110,7 @@ class AthleteService:
             missing = self._check_missing_fields(form, profile_data)
             all_missing_fields.extend(missing)
         
+        # Process health data
         health_form = context.get_form("athlete_health_profile")
         if health_form and health_data:
             validated_health = health_form.validate_data(health_data)
@@ -119,25 +121,56 @@ class AthleteService:
             missing = self._check_missing_fields(health_form, health_data)
             all_missing_fields.extend(missing)
         
+        # Process training structure
         structure_form = context.get_form("athlete_training_structure")
         if structure_form and training_structure_data:
             validated_structure = structure_form.validate_data(training_structure_data)
-            training_structure = AthleteTrainingStructure(profile_id=profile.id, sport_id=sport_id, form_id=structure_form.id)
+            
+            # 🔥 Deactivate existing active structure before creating new one
+            existing_active = self.db.query(AthleteTrainingStructure).filter_by(
+                profile_id=profile.id,
+                sport_id=sport_id,
+                is_active=True
+            ).first()
+            
+            if existing_active:
+                existing_active.is_active = False
+                self.db.flush()
+            
+            training_structure = AthleteTrainingStructure(
+                profile_id=profile.id,
+                sport_id=sport_id,
+                form_id=structure_form.id,
+                is_active=True,
+            )
             self.db.add(training_structure)
             self.db.flush()
-            self._save_form_values(AthleteTrainingStructureValue, "structure_id", training_structure.id, validated_structure)
+            
+            self._save_form_values(
+                AthleteTrainingStructureValue, "structure_id", training_structure.id, validated_structure
+            )
             missing = self._check_missing_fields(structure_form, training_structure_data)
             all_missing_fields.extend(missing)
         
+        # Process goal data
         goal_form = context.get_form("athlete_goal")
         if goal_form and goal_data:
             validated_goal = goal_form.validate_data(goal_data)
+            
+            # Deactivate previous active goal
             self.db.query(AthleteGoal).filter_by(
                 profile_id=profile.id, sport_id=sport_id, is_active=True
             ).update({"is_active": False})
-            goal = AthleteGoal(profile_id=profile.id, sport_id=sport_id, form_id=goal_form.id, is_active=True)
+            
+            goal = AthleteGoal(
+                profile_id=profile.id,
+                sport_id=sport_id,
+                form_id=goal_form.id,
+                is_active=True
+            )
             self.db.add(goal)
             self.db.flush()
+            
             self._save_form_values(AthleteGoalValue, "goal_id", goal.id, validated_goal)
             missing = self._check_missing_fields(goal_form, goal_data)
             all_missing_fields.extend(missing)
@@ -366,6 +399,7 @@ class AthleteService:
                             field_id=field_id,
                             value=str(value),
                         ))
+        
         self.db.commit()
         
         sufficiency = SufficiencyService(self.db, self.user_id, sport_id, context)

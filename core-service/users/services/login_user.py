@@ -81,6 +81,7 @@ def login_user(data):
                                 "label": ff.label or ff.field.label,
                                 "type": ff.field.field_type.code,
                                 "required": ff.is_required,
+                                "UI-config": ff.field.ui_config,
                                 "order": ff.order,
                                 "options": [
                                     {

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey
+from sqlalchemy import Column, String, ForeignKey, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -12,7 +12,8 @@ class AthleteTrainingStructure(BaseModel):
     profile_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     sport_id = Column(String, nullable=False, index=True)
     form_id = Column(UUID(as_uuid=True), nullable=True)
-    
+    is_active = Column(Boolean, default=True)
+
     # Relationships
     values = relationship("AthleteTrainingStructureValue", back_populates="structure", cascade="all, delete-orphan")
 
