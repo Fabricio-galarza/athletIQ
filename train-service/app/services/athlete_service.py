@@ -54,22 +54,30 @@ class AthleteService:
         return sport_profile
     
     def _save_form_values(
-        self, 
-        value_table, 
-        fk_field: str, 
-        fk_id: UUID, 
-        validated_data: Dict[str, Any]
+    self, 
+    value_table, 
+    fk_field: str, 
+    fk_id: UUID, 
+    validated_data: Dict[str, Any]
     ) -> None:
         """Generic method to save form values to any value table."""
+        import json
+        
         for field_name, field_data in validated_data.items():
             value = field_data.get("value")
             field_id = field_data.get("field_id")
             
             if value is not None and field_id:
+                # Convert value to string (JSON uses dumps for readability)
+                if isinstance(value, (dict, list)):
+                    value_str = json.dumps(value, ensure_ascii=False)
+                else:
+                    value_str = str(value)
+                
                 value_record = value_table(
                     **{fk_field: fk_id},
                     field_id=field_id,
-                    value=str(value),
+                    value=value_str,
                 )
                 self.db.add(value_record)
     
@@ -124,9 +132,10 @@ class AthleteService:
         # Process training structure
         structure_form = context.get_form("athlete_training_structure")
         if structure_form and training_structure_data:
+            
             validated_structure = structure_form.validate_data(training_structure_data)
             
-            # 🔥 Deactivate existing active structure before creating new one
+            # Deactivate existing active structure before creating new one
             existing_active = self.db.query(AthleteTrainingStructure).filter_by(
                 profile_id=profile.id,
                 sport_id=sport_id,
@@ -149,6 +158,7 @@ class AthleteService:
             self._save_form_values(
                 AthleteTrainingStructureValue, "structure_id", training_structure.id, validated_structure
             )
+
             missing = self._check_missing_fields(structure_form, training_structure_data)
             all_missing_fields.extend(missing)
         

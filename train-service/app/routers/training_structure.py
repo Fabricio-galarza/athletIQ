@@ -26,7 +26,6 @@ async def create_training_structure(
     """
     Create a new training structure for a sport.
     Deactivates any existing active structure for this sport.
-    
     Expected data format:
     {
         "form_data": {
