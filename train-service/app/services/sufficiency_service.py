@@ -1,6 +1,6 @@
 """
-CU-TRAIN-01-HU-05: Automatic data sufficiency evaluation.
-CU-TRAIN-01-HU-06: Find appropriate test template for athlete.
+HU-05: Automatic data sufficiency evaluation across all forms.
+HU-06: Find appropriate test template for athlete.
 """
 
 from typing import Dict, Any, List, Optional
@@ -10,6 +10,9 @@ from sqlalchemy import text
 from app.core.context import UserContext
 from app.infra.db.models.athlete import AthleteProfile
 from app.infra.db.models.sport_profile import AthleteSportProfileValue
+from app.infra.db.models.health import AthleteHealthProfileValue
+from app.infra.db.models.training_structure import AthleteTrainingStructureValue
+from app.infra.db.models.goal import AthleteGoalValue
 
 
 class SufficiencyService:
@@ -17,6 +20,14 @@ class SufficiencyService:
     Evaluates if athlete has sufficient data based on Core forms.
     Finds appropriate test template based on athlete profile.
     """
+    
+    # List of forms to evaluate for sufficiency
+    FORM_CODES = [
+        "athlete_profile",
+        "athlete_health_profile",
+        "athlete_training_structure",
+        "athlete_goal",
+    ]
     
     def __init__(self, db: Session, user_id: str, sport_id: str, context: UserContext):
         """Initialize service with database session and user context."""
@@ -27,48 +38,59 @@ class SufficiencyService:
     
     def evaluate(self) -> Dict[str, Any]:
         """
-        Evaluate data sufficiency using cached context form.
+        Evaluate data sufficiency across ALL forms.
         
         Returns:
             Dict with:
             - has_sufficient_data: bool
-            - missing_required_fields: list
+            - missing_fields: list (format: form_code.field_name)
             - completion_score: int (0-100)
             - requires_test: bool
             - total_required_fields: int
             - completed_required_fields: int
+            - required_by_form: dict
             - test_template: dict or None
         """
-        # Get form from cached context
-        form = self.context.get_form("athlete_profile")
+        all_missing_fields = []
+        required_by_form = {}
+        total_required = 0
+        completed_required = 0
         
-        if not form:
-            return {
-                "has_sufficient_data": False,
-                "missing_required_fields": [],
-                "completion_score": 0,
-                "requires_test": True,
-                "total_required_fields": 0,
-                "completed_required_fields": 0,
-                "message": "Form not found in context",
-                "test_template": None
+        # Evaluate each form
+        for form_code in self.FORM_CODES:
+            form = self.context.get_form(form_code)
+            if not form:
+                continue
+            
+            # Get required fields from form definition
+            required_fields = [f.name for f in form.fields if f.required]
+            
+            if not required_fields:
+                continue
+            
+            # Get existing fields for this form from database
+            existing_fields = self._get_existing_fields_for_form(form_code)
+            
+            # Find missing fields
+            missing_for_form = []
+            for field in required_fields:
+                if field not in existing_fields:
+                    missing_for_form.append(f"{form_code}.{field}")
+                    all_missing_fields.append(f"{form_code}.{field}")
+            
+            required_by_form[form_code] = {
+                "required": required_fields,
+                "missing": missing_for_form,
+                "completed": len(required_fields) - len(missing_for_form)
             }
-        
-        # Get required fields from form definition
-        required_fields = [f.name for f in form.fields if f.required]
-        
-        # Get existing field values from database
-        existing_fields = self._get_existing_field_names()
-        
-        # Find missing required fields
-        missing = [f for f in required_fields if f not in existing_fields]
+            
+            total_required += len(required_fields)
+            completed_required += (len(required_fields) - len(missing_for_form))
         
         # Calculate completion score
-        total = len(required_fields)
-        completed = total - len(missing)
-        score = int((completed / total) * 100) if total > 0 else 100
+        completion_score = int((completed_required / total_required) * 100) if total_required > 0 else 100
         
-        requires_test = len(missing) > 0
+        requires_test = len(all_missing_fields) > 0
         
         # Find test template if needed
         test_template = None
@@ -77,18 +99,22 @@ class SufficiencyService:
         
         return {
             "has_sufficient_data": not requires_test,
-            "missing_required_fields": missing,
-            "completion_score": score,
+            "missing_fields": all_missing_fields,
+            "completion_score": completion_score,
             "requires_test": requires_test,
-            "total_required_fields": total,
-            "completed_required_fields": completed,
+            "total_required_fields": total_required,
+            "completed_required_fields": completed_required,
+            "required_by_form": required_by_form,
             "test_template": test_template,
         }
     
-    def _get_existing_field_names(self) -> set:
-        """Get set of field IDs that already have values."""
+    def _get_existing_fields_for_form(self, form_code: str) -> set:
+        """
+        Get set of field names that already have values for a specific form.
+        """
         existing = set()
         
+        # Get athlete profile
         profile = self.db.query(AthleteProfile).filter_by(
             user_id=self.user_id
         ).first()
@@ -96,19 +122,102 @@ class SufficiencyService:
         if not profile:
             return existing
         
-        query = text("""
-            SELECT field_id FROM train.athlete_sport_profile_value 
-            WHERE sport_profile_id IN (
-                SELECT id FROM train.athlete_sport_profile WHERE profile_id = :profile_id
-            )
-        """)
+        # Get field ID to name mapping from context
+        field_id_to_name = self._get_field_id_to_name_mapping()
         
-        result = self.db.execute(query, {"profile_id": profile.id}).fetchall()
+        if form_code == "athlete_profile":
+            # Query athlete_sport_profile_value
+            query = text("""
+                SELECT aspv.field_id
+                FROM train.athlete_sport_profile_value aspv
+                JOIN train.athlete_sport_profile asp ON aspv.sport_profile_id = asp.id
+                WHERE asp.profile_id = :profile_id
+                  AND asp.sport_id = :sport_id
+            """)
+            
+            result = self.db.execute(query, {
+                "profile_id": profile.id,
+                "sport_id": self.sport_id
+            }).fetchall()
+            
+            for row in result:
+                field_name = field_id_to_name.get(str(row[0]))
+                if field_name:
+                    existing.add(field_name)
         
-        for row in result:
-            existing.add(str(row[0]))
+        elif form_code == "athlete_health_profile":
+            # Query athlete_health_profile_value
+            query = text("""
+                SELECT ahpv.field_id
+                FROM train.athlete_health_profile_value ahpv
+                JOIN train.athlete_health_profile ahp ON ahpv.health_id = ahp.id
+                WHERE ahp.profile_id = :profile_id
+            """)
+            
+            result = self.db.execute(query, {"profile_id": profile.id}).fetchall()
+            
+            for row in result:
+                field_name = field_id_to_name.get(str(row[0]))
+                if field_name:
+                    existing.add(field_name)
+        
+        elif form_code == "athlete_training_structure":
+            # Query athlete_training_structure_value
+            query = text("""
+                SELECT atsv.field_id
+                FROM train.athlete_training_structure_value atsv
+                JOIN train.athlete_training_structure ats ON atsv.structure_id = ats.id
+                WHERE ats.profile_id = :profile_id
+                  AND ats.sport_id = :sport_id
+            """)
+            
+            result = self.db.execute(query, {
+                "profile_id": profile.id,
+                "sport_id": self.sport_id
+            }).fetchall()
+            
+            for row in result:
+                field_name = field_id_to_name.get(str(row[0]))
+                if field_name:
+                    existing.add(field_name)
+        
+        elif form_code == "athlete_goal":
+            # Query athlete_goal_value for active goal
+            query = text("""
+                SELECT agv.field_id
+                FROM train.athlete_goal_value agv
+                JOIN train.athlete_goal ag ON agv.goal_id = ag.id
+                WHERE ag.profile_id = :profile_id
+                  AND ag.sport_id = :sport_id
+                  AND ag.is_active = TRUE
+            """)
+            
+            result = self.db.execute(query, {
+                "profile_id": profile.id,
+                "sport_id": self.sport_id
+            }).fetchall()
+            
+            for row in result:
+                field_name = field_id_to_name.get(str(row[0]))
+                if field_name:
+                    existing.add(field_name)
         
         return existing
+    
+    def _get_field_id_to_name_mapping(self) -> Dict[str, str]:
+        """
+        Build mapping from field_id to field_name using context forms.
+        """
+        mapping = {}
+        
+        for form_code in self.FORM_CODES:
+            form = self.context.get_form(form_code)
+            if form:
+                for field in form.fields:
+                    if field.id:
+                        mapping[str(field.id)] = field.name
+        
+        return mapping
     
     def _get_athlete_data(self) -> Dict[str, Any]:
         """
@@ -116,7 +225,7 @@ class SufficiencyService:
         
         Reads:
         - level (from profile)
-        - age_range (converted to numeric age for template matching)
+        - age_range (converted to numeric age)
         - gender
         - health_status
         
@@ -126,12 +235,11 @@ class SufficiencyService:
         # Default values
         athlete_data = {
             "level": "intermediate",
-            "age": 30,  # Default age for calculation
+            "age": 30,
             "gender": "any",
             "health_status": "healthy"
         }
         
-        # Get athlete profile
         profile = self.db.query(AthleteProfile).filter_by(
             user_id=self.user_id
         ).first()
@@ -139,26 +247,8 @@ class SufficiencyService:
         if not profile:
             return athlete_data
         
-        # Get field_id to name mapping from context
-        form = self.context.get_form("athlete_profile")
-        field_name_to_id = {}
-        field_id_to_name = {}
-        
-        if form:
-            for field in form.fields:
-                if field.id:
-                    field_id_to_name[str(field.id)] = field.name
-                    field_name_to_id[field.name] = str(field.id)
-        
-        # Get sport profile values
-        query = text("""
-            SELECT aspv.field_id, aspv.value
-            FROM train.athlete_sport_profile_value aspv
-            JOIN train.athlete_sport_profile asp ON aspv.sport_profile_id = asp.id
-            WHERE asp.profile_id = :profile_id
-        """)
-        
-        result = self.db.execute(query, {"profile_id": profile.id}).fetchall()
+        # Get field ID to name mapping
+        field_id_to_name = self._get_field_id_to_name_mapping()
         
         # Age range to numeric mapping
         age_range_map = {
@@ -170,11 +260,23 @@ class SufficiencyService:
             "55+": 60,
         }
         
+        # Query sport profile values
+        query = text("""
+            SELECT aspv.field_id, aspv.value
+            FROM train.athlete_sport_profile_value aspv
+            JOIN train.athlete_sport_profile asp ON aspv.sport_profile_id = asp.id
+            WHERE asp.profile_id = :profile_id
+              AND asp.sport_id = :sport_id
+        """)
+        
+        result = self.db.execute(query, {
+            "profile_id": profile.id,
+            "sport_id": self.sport_id
+        }).fetchall()
+        
         for row in result:
-            field_id = str(row[0])
+            field_name = field_id_to_name.get(str(row[0]))
             value = row[1]
-            
-            field_name = field_id_to_name.get(field_id)
             
             if field_name == "level":
                 athlete_data["level"] = value if value else "intermediate"
@@ -182,8 +284,6 @@ class SufficiencyService:
                 athlete_data["age"] = age_range_map.get(value, 30)
             elif field_name == "gender":
                 athlete_data["gender"] = value if value else "any"
-            elif field_name == "health_status":
-                athlete_data["health_status"] = value if value else "healthy"
         
         return athlete_data
     

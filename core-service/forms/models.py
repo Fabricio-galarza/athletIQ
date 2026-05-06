@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.postgres.fields import JSONField
 from common.models import BaseModel
 
 
@@ -68,9 +69,14 @@ class Field(BaseModel):
     data_type = models.ForeignKey(
         DataType,
         on_delete=models.PROTECT,
-        related_name='fields'
+        related_name='fields',
+        null=True,
+        blank=True
     )
 
+    # 🔥 NEW: UI-specific configurations (JSON)
+    ui_config = models.JSONField(default=dict, blank=True)
+    
     def __str__(self):
         return self.name
 

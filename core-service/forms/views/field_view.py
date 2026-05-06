@@ -1,3 +1,4 @@
+# forms/views/field_view.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,14 +10,11 @@ from forms.services.field_service import create_field
 
 class FieldCreateView(APIView):
 
-    # require authentication
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        # get user auth
         user = request.user
 
-        # validate request data
         serializer = FieldSerializer(data=request.data)
 
         if not serializer.is_valid():
@@ -26,8 +24,10 @@ class FieldCreateView(APIView):
             )
 
         try:
-            # call service
             field = create_field(serializer.validated_data, user)
+
+            # 🔥 Manejar data_type None para UI-only fields
+            data_type_code = field.data_type.code if field.data_type else None
 
             return Response(
                 {
@@ -36,7 +36,8 @@ class FieldCreateView(APIView):
                         "id": field.id,
                         "name": field.name,
                         "field_type": field.field_type.code,
-                        "data_type": field.data_type.code
+                        "data_type": data_type_code,  # 🔥 Puede ser None
+                        "ui_config": field.ui_config,  # 🔥 Incluir ui_config
                     }
                 },
                 status=status.HTTP_201_CREATED

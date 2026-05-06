@@ -28,7 +28,7 @@ def login_user(data):
         email = data.get("email")
         password = data.get("password")
         
-        # 🔹 validate credentials against db
+        # validate credentials against db
         try:
             user = User.objects.get(email=email, is_active=True)
             if not user.check_password(password):
@@ -36,28 +36,31 @@ def login_user(data):
         except ObjectDoesNotExist:
             raise ValueError("CREDENCIALES INVALIDAS")
         
-        # 🔹 check if session is already cached to avoid unnecessary db queries
+        # check if session is already cached to avoid unnecessary db queries
         cache_key = f"session:{user.id}"
         cached = cache.get(cache_key)
         if cached:
             return json.loads(cached)
 
-        # 🔹 fetch roles assigned to the user
+        # fetch roles assigned to the user
         roles = user.user_roles.values_list('role__name', flat=True)
         
-        # 🔹 fetch active plans assigned to the user
+        # fetch active plans assigned to the user
         plans = Plan.objects.filter(user_plans__user=user).values_list("name", flat=True)
         
-        # 🔹 fetch features enabled for the user's plans
+        # fetch features enabled for the user's plans
         features = Feature.objects.filter(
             plan_features__plan__user_plans__user=user,
             plan_features__is_enabled=True
         ).values_list('code', flat=True)
         
-        # 🔹 fetch sports practiced by the user
+        # fetch sports practiced by the user
         sports_queryset = Sport.objects.filter(user_sports__user=user)
         
-        # 🔹 fetch active forms available for the user's sports
+        # Get user's sport names for filtering
+        user_sport_names = [sport.name.lower() for sport in sports_queryset]
+        
+        # fetch active forms available for the user's sports
         # prefetch_related avoids N+1 queries when accessing form_fields and their fields
         forms_qs = Form.objects.filter(
             is_active=True,
@@ -67,37 +70,62 @@ def login_user(data):
             'form_fields__field'
         ).distinct()
         
-        # 🔹 serialize forms with their fields into a flat structure
-        forms = [
-                    {
-                        "id": str(form.id),
-                        "name": form.name,
-                        "code": form.code,
-                        "module": form.module.name,
-                        "fields": [
-                            {
-                                "id": str(ff.field.id),  # 🔥 Agregar field_id
-                                "name": ff.field.name,
-                                "label": ff.label or ff.field.label,
-                                "type": ff.field.field_type.code,
-                                "required": ff.is_required,
-                                "order": ff.order,
-                                "options": [
-                                    {
-                                        "value": opt.value,
-                                        "label": opt.label or opt.value,
-                                        "order": opt.order
-                                    }
-                                    for opt in ff.field.options.all().order_by('order')
-                                ] if ff.field.field_type.code in ['select', 'radio', 'checkbox'] else []
-                            }
-                            for ff in form.form_fields.all().order_by('order')
-                        ]
-                    }
-                    for form in forms_qs
-                ]
+        # serialize forms with their fields into a flat structure
+        forms = []
         
-        # 🔹 generate JWT tokens for the session
+        for form in forms_qs:
+            form_fields = []
+            
+            for ff in form.form_fields.all().order_by('order'):
+                field = ff.field
+                
+                # Get ui_config
+                ui_config = field.ui_config or {}
+                
+                # Filter options_by_sport for weekly_schedule field
+                if field.name == "weekly_schedule" and "options_by_sport" in ui_config:
+                    full_options = ui_config["options_by_sport"]
+                    filtered_options = {
+                        sport_name: full_options.get(sport_name, [])
+                        for sport_name in user_sport_names
+                        if sport_name in full_options
+                    }
+                    ui_config["options_by_sport"] = filtered_options
+                
+                field_data = {
+                    "id": str(field.id),
+                    "name": field.name,
+                    "label": ff.label or field.label,
+                    "type": field.field_type.code,
+                    "required": ff.is_required,
+                    "order": ff.order,
+                    "UI-config": ui_config,
+                    "options": []
+                }
+                
+                # Add options for select/radio/checkbox fields
+                if field.field_type.code in ['select', 'radio', 'checkbox']:
+                    options = field.options.all().order_by('order')
+                    field_data["options"] = [
+                        {
+                            "value": opt.value,
+                            "label": opt.label or opt.value,
+                            "order": opt.order,
+                        }
+                        for opt in options
+                    ]
+                
+                form_fields.append(field_data)
+            
+            forms.append({
+                "id": str(form.id),
+                "name": form.name,
+                "code": form.code,
+                "module": form.module.name if form.module else None,
+                "fields": form_fields,
+            })
+        
+        # generate JWT tokens for the session
         # access token: short-lived, used in every request
         # refresh token: long-lived, used to renew the access token
         refresh = RefreshToken.for_user(user)
@@ -123,7 +151,7 @@ def login_user(data):
             }
         }
     
-        # 🔹 cache the session for 30 minutes to speed up subsequent logins
+        # cache the session for 30 minutes to speed up subsequent logins
         cache.set(cache_key, json.dumps(result), timeout=60*30)
       
         return result

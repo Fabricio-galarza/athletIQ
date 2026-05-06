@@ -5,7 +5,7 @@ from app.infra.db.session import check_db_connection
 from app.core.cache import cache
 from app.api.v1 import athlete
 
-from app.routers import evaluation, workout, onboarding
+from app.routers import evaluation, workout, onboarding, training_structure
 
 settings = get_settings()
 
@@ -35,6 +35,8 @@ app.include_router(workout.router, prefix="/api/v1")
 
 app.include_router(evaluation.router, prefix="/api/v1")
 app.include_router(onboarding.router, prefix="/api/v1")
+
+app.include_router(training_structure.router, prefix="/api/v1")
 
 
 @app.get("/health/live")

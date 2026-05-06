@@ -1,7 +1,9 @@
+# app/core/context.py
 """
 User context management for Train service.
 Fetches context from Core or cache, validates JWT token.
 """
+
 import base64
 import json
 import jwt
@@ -10,7 +12,6 @@ from typing import Dict, Any, List, Optional
 from uuid import UUID
 from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.core.exceptions import ValidationError
 
 from app.core.config import get_settings
 from app.core.cache import cache
@@ -23,13 +24,25 @@ security = HTTPBearer()
 
 class FormField:
     """Represents a field in a dynamic form."""
+    
     def __init__(self, data: Dict[str, Any]):
         self.id: Optional[UUID] = UUID(data["id"]) if data.get("id") else None
         self.name: str = data.get("name", "")
+        self.label: str = data.get("label", "")
         self.type: str = data.get("type", "")
         self.required: bool = data.get("required", False)
         self.order: int = data.get("order", 0)
-        self.options: List[Dict] = data.get("options", [])
+        
+        # Get options based on field type
+        self.options: List[Dict] = []
+        ui_config = data.get("UI-config", {})
+        
+        if self.type == "multiselect":
+            self.options = ui_config.get("options", [])
+        else:
+            self.options = data.get("options", [])
+        
+        self.ui_config = ui_config
     
     def validate(self, value: Any) -> tuple:
         """Validate a value against this field definition."""
@@ -45,10 +58,28 @@ class FormField:
             except (ValueError, TypeError):
                 return False, f"Field '{self.name}' must be a number"
         
+        # Validate JSON type
+        elif self.type == "json":
+            # JSON can be dict, list, string, number, bool, null
+            try:
+                json.dumps(value)
+            except (TypeError, ValueError):
+                return False, f"Field '{self.name}' must be valid JSON"
+        
         elif self.type in ["select", "radio"] and self.options:
             valid_values = [opt["value"] for opt in self.options]
             if str(value) not in valid_values:
                 return False, f"Field '{self.name}' must be one of: {valid_values}"
+        
+        elif self.type == "multiselect" and self.options:
+            valid_values = [opt["value"] for opt in self.options]
+            if isinstance(value, list):
+                for item in value:
+                    if str(item) not in valid_values:
+                        return False, f"Field '{self.name}' contains invalid value '{item}'"
+            else:
+                if str(value) not in valid_values:
+                    return False, f"Field '{self.name}' must be one of: {valid_values}"
         
         return True, ""
 
@@ -84,11 +115,12 @@ class Form:
         Raises:
             ValidationError: If validation fails with details
         """
+        from app.core.exceptions import ValidationError
+        
         errors = {}
         validated = {}
         
         for field in self.fields:
-            # For partial updates (PATCH), skip validation if field not present
             if partial and field.name not in data:
                 continue
             
@@ -119,6 +151,7 @@ class Form:
                 {
                     "id": str(f.id) if f.id else None,
                     "name": f.name,
+                    "label": f.label,
                     "type": f.type,
                     "required": f.required,
                     "order": f.order,
