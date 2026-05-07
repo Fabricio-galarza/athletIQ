@@ -18,6 +18,8 @@ import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+load_dotenv(BASE_DIR.parent / '.env')  # athletIQ/.env 
+load_dotenv()  
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -94,20 +96,17 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-print(f"DB_HOST: {os.getenv('DB_HOST')}")
-print(f"DB_NAME: {os.getenv('DB_NAME')}")
-print(f"DB_USER: {os.getenv('DB_USER')}")
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'athletiq',
-        'USER': 'core.mxfcjaymxebjkplvecoi', # core.mxfcjaymxebjkplvecoi
-        'PASSWORD': 'G7!vQ9#rT2@xL5$zW8%kP3^mH1&bN4*D', # G7!vQ9#rT2@xL5$zW8%kP3^mH1&bN4*D
-        'HOST': 'aws-1-us-east-2.pooler.supabase.com', # aws-1-us-east-2.pooler.supabase.com
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', ''),
+        'USER': os.environ.get('DB_USER', ''),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', ''),
+        'PORT': os.environ.get('DB_PORT', ''),
         'OPTIONS': {
-            'options': '-c search_path=core'
+            'options': f"-c search_path={os.environ.get('DB_SCHEMA', '')}"
         },
     }
 }

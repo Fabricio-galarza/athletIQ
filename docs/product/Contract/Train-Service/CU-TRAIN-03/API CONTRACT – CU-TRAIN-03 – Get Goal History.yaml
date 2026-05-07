@@ -1,0 +1,145 @@
+
+---
+
+### Archivo: `API CONTRACT – CU-TRAIN-03 – Get Goal History.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Goal History API
+  version: 1.0.0
+  description: API para obtener historial de objetivos del atleta
+
+paths:
+  /api/v1/athlete/goals/{sport_id}:
+    get:
+      summary: Get goal history
+      description: |
+        Returns all goals (active and inactive) for a specific sport.
+        Ordered by creation date descending.
+      tags:
+        - Goals
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: path
+          name: sport_id
+          required: true
+          schema:
+            type: string
+          description: Sport name (e.g., Running, CrossFit)
+          example: "Running"
+
+      responses:
+        '200':
+          description: Goal history retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GoalHistoryResponse'
+              example:
+                sport_id: "Running"
+                total_goals: 2
+                active_goal:
+                  id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                  is_active: true
+                  values:
+                    primary_goal: "improve_endurance"
+                goals:
+                  - id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                    is_active: true
+                    values:
+                      primary_goal: "improve_endurance"
+                  - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    is_active: false
+                    values:
+                      primary_goal: "weight_loss"
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    GoalHistoryResponse:
+      type: object
+      properties:
+        sport_id:
+          type: string
+        total_goals:
+          type: integer
+        active_goal:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+              format: uuid
+            is_active:
+              type: boolean
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+            values:
+              type: object
+              additionalProperties:
+                type: string
+        goals:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              is_active:
+                type: boolean
+              created_at:
+                type: string
+                format: date-time
+              updated_at:
+                type: string
+                format: date-time
+              values:
+                type: object
+                additionalProperties:
+                  type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
