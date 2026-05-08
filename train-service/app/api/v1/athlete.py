@@ -148,3 +148,144 @@ async def update_sport_profile(
         has_sufficient_data=has_sufficient_data,
         requires_test=not has_sufficient_data,
     )
+
+# app/api/v1/athlete.py - Modificar el endpoint get_goal_history
+
+@router.get(
+    "/goals/{sport_id}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    summary="Get goal history",
+)
+async def get_goal_history(
+    sport_id: str,
+    context: UserContext = Depends(RequireAthlete),
+    db: Session = Depends(get_db),
+):
+    """
+    Get all goals for a specific sport.
+    Returns both active and inactive goals ordered by creation date.
+    """
+    service = AthleteService(db, context.user_id)
+    goals = service.get_goal_history(sport_id, context)  # 🔥 Pasar context
+    
+    return {
+        "sport_id": sport_id,
+        "total_goals": len(goals),
+        "active_goal": next((g for g in goals if g["is_active"]), None),
+        "goals": goals
+    }
+
+@router.put(
+    "/goal/{goal_id}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    summary="Update a specific goal",
+    description="Update a goal by its ID. Only provided fields will be updated."
+)
+async def update_goal(
+    goal_id: UUID,
+    data: dict,
+    context: UserContext = Depends(RequireAthlete),
+    db: Session = Depends(get_db),
+):
+    """
+    Update a specific goal.
+    
+    Only the fields sent in the request will be updated.
+    """
+    service = AthleteService(db, context.user_id)
+    
+    try:
+        result = service.update_goal(goal_id, data, context)
+        return result
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post(
+    "/goal",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new goal",
+    description="Creates a new goal for a sport. Deactivates any previous active goal."
+)
+async def create_goal(
+    sport_id: str,
+    data: dict,
+    context: UserContext = Depends(RequireAthlete),
+    db: Session = Depends(get_db),
+):
+    """
+    Create a new goal for a sport.
+    
+    The previous active goal for this sport will be automatically deactivated.
+    """
+    service = AthleteService(db, context.user_id)
+    
+    try:
+        result = service.create_goal(sport_id, data, context)
+        return result
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
+
+# app/api/v1/athlete.py - Modificar el endpoint get_equipment
+
+@router.get(
+    "/equipment/{sport_id}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    summary="Get equipment",
+)
+async def get_equipment(
+    sport_id: str,
+    context: UserContext = Depends(RequireAthlete),
+    db: Session = Depends(get_db),
+):
+    """
+    Get equipment for a specific sport.
+    """
+    service = AthleteService(db, context.user_id)
+    result = service.get_equipment(sport_id, context)  # 🔥 Pasar context
+    return result
+
+# app/api/v1/athlete.py - Agregar al final
+
+@router.put(
+    "/equipment/{sport_id}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    summary="Update equipment",
+    description="Update equipment available for a specific sport"
+)
+async def update_equipment(
+    sport_id: str,
+    data: dict,
+    context: UserContext = Depends(RequireAthlete),
+    db: Session = Depends(get_db),
+):
+    """
+    Update equipment for a specific sport.
+    
+    Request body example:
+    {
+        "equipment": ["running_shoes", "heart_rate_monitor", "dumbbells"]
+    }
+    """
+    equipment_list = data.get("equipment", [])
+    
+    if not isinstance(equipment_list, list):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Equipment must be a list"
+        )
+    
+    service = AthleteService(db, context.user_id)
+    
+    try:
+        result = service.update_equipment(sport_id, equipment_list, context)
+        return result
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))

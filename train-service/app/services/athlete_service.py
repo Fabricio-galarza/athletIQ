@@ -1,10 +1,12 @@
 """
-Service layer for athlete profile management (CU-TRAIN-01)
+Service layer for athlete profile management
 """
 
 from uuid import UUID
 from typing import Dict, Any, Optional, Tuple, List
 from sqlalchemy.orm import Session
+from sqlalchemy import func
+import json
 
 from app.core.context import UserContext
 from app.core.exceptions import NotFoundError, ValidationError
@@ -61,7 +63,6 @@ class AthleteService:
     validated_data: Dict[str, Any]
     ) -> None:
         """Generic method to save form values to any value table."""
-        import json
         
         for field_name, field_data in validated_data.items():
             value = field_data.get("value")
@@ -416,3 +417,351 @@ class AthleteService:
         evaluation = sufficiency.evaluate()
         
         return profile.id, sport_profile.id, updated_fields, evaluation["has_sufficient_data"]
+    
+    
+    def get_goal_history(self, sport_id: str, context: UserContext) -> List[Dict[str, Any]]:
+        """
+        Get all goals (active and inactive) for a specific sport.
+        
+        Args:
+            sport_id: Sport name (e.g., 'Running')
+            context: User context with form definitions for field name mapping
+        
+        Returns:
+            List of goals with their values and active status
+        """
+        # Get athlete profile
+        profile = self.db.query(AthleteProfile).filter_by(
+            user_id=self.user_id
+        ).first()
+        
+        if not profile:
+            return []
+        
+        # Get all goals for this sport
+        goals = self.db.query(AthleteGoal).filter_by(
+            profile_id=profile.id,
+            sport_id=sport_id
+        ).order_by(AthleteGoal.created_at.desc()).all()
+        
+        if not goals:
+            return []
+        
+        # Build field_id to field_name mapping from context
+        field_name_map = {}
+        form = context.get_form("athlete_goal")
+        
+        if form:
+            for field in form.fields:
+                if field.id:
+                    field_name_map[str(field.id)] = field.name
+        
+        result = []
+        for goal in goals:
+            # Get values for this goal
+            values = self.db.query(AthleteGoalValue).filter_by(
+                goal_id=goal.id
+            ).all()
+            
+            # Convert field_id to field names using context mapping
+            readable_values = {}
+            for val in values:
+                field_name = field_name_map.get(str(val.field_id), str(val.field_id))
+                readable_values[field_name] = val.value
+            
+            result.append({
+                "id": str(goal.id),
+                "sport_id": goal.sport_id,
+                "is_active": goal.is_active,
+                "created_at": goal.created_at.isoformat() if goal.created_at else None,
+                "updated_at": goal.updated_at.isoformat() if goal.updated_at else None,
+                "values": readable_values,
+            })
+        
+        return result
+    
+
+    def update_goal(self, goal_id: UUID, goal_data: Dict[str, Any], context: UserContext) -> Dict[str, Any]:
+        """
+        Update a specific goal.
+        
+        Args:
+            goal_id: UUID of the goal to update
+            goal_data: Dictionary with goal fields to update
+            context: User context with form definitions
+        
+        Returns:
+            Updated goal data
+        """
+        # Get the goal
+        goal = self.db.query(AthleteGoal).filter_by(
+            id=goal_id
+        ).first()
+        
+        if not goal:
+            raise NotFoundError("AthleteGoal", str(goal_id))
+        
+        # Verify ownership
+        profile = self.db.query(AthleteProfile).filter_by(
+            user_id=self.user_id
+        ).first()
+        
+        if not profile or goal.profile_id != profile.id:
+            raise ValidationError("Goal does not belong to this athlete")
+        
+        # Get form for validation
+        form = context.get_form("athlete_goal")
+        if not form:
+            raise ValidationError("Form 'athlete_goal' not found in context")
+        
+        # Validate data (partial update allowed)
+        validated = form.validate_data(goal_data, partial=True)
+        
+        updated_fields = []
+        
+        # Update or create values
+        for field_name, field_data in validated.items():
+            value = field_data["value"]
+            field_id = field_data["field_id"]
+            
+            if value is None:
+                continue
+            
+            updated_fields.append(field_name)
+            
+            # Check if value already exists
+            existing = self.db.query(AthleteGoalValue).filter_by(
+                goal_id=goal.id,
+                field_id=field_id
+            ).first()
+            
+            if existing:
+                existing.value = str(value)
+            else:
+                self.db.add(AthleteGoalValue(
+                    goal_id=goal.id,
+                    field_id=field_id,
+                    value=str(value),
+                ))
+        
+        # Update timestamp
+        goal.updated_at = func.now()
+        
+        self.db.commit()
+        
+        # Return updated goal
+        return {
+            "id": str(goal.id),
+            "sport_id": goal.sport_id,
+            "is_active": goal.is_active,
+            "updated_fields": updated_fields,
+            "message": "Goal updated successfully"
+        }
+    
+
+    def create_goal(self, sport_id: str, goal_data: Dict[str, Any], context: UserContext) -> Dict[str, Any]:
+        """
+        Create a new goal for a sport.
+        Deactivates any previously active goal for the same sport.
+        
+        Args:
+            sport_id: Sport name (e.g., 'Running')
+            goal_data: Dictionary with goal fields
+            context: User context with form definitions
+        
+        Returns:
+            Created goal data
+        """
+        # Get or create athlete profile
+        profile = self._get_or_create_profile()
+        
+        # Get form for validation
+        form = context.get_form("athlete_goal")
+        if not form:
+            raise ValidationError("Form 'athlete_goal' not found in context")
+        
+        # Validate data
+        validated = form.validate_data(goal_data)
+        
+        # Deactivate previous active goal
+        self.db.query(AthleteGoal).filter_by(
+            profile_id=profile.id,
+            sport_id=sport_id,
+            is_active=True
+        ).update({"is_active": False})
+        
+        # Create new goal
+        goal = AthleteGoal(
+            profile_id=profile.id,
+            sport_id=sport_id,
+            form_id=form.id,
+            is_active=True,
+        )
+        self.db.add(goal)
+        self.db.flush()
+        
+        # Save values
+        for field_name, field_data in validated.items():
+            value = field_data["value"]
+            field_id = field_data["field_id"]
+            
+            if value is not None and field_id:
+                self.db.add(AthleteGoalValue(
+                    goal_id=goal.id,
+                    field_id=field_id,
+                    value=str(value),
+                ))
+        
+        self.db.commit()
+        
+        # Return created goal
+        return {
+            "id": str(goal.id),
+            "sport_id": sport_id,
+            "is_active": True,
+            "message": "Goal created successfully"
+        }
+
+
+    def get_equipment(self, sport_id: str, context: UserContext) -> Dict[str, Any]:
+        """
+        Get equipment for a specific sport.
+        
+        Args:
+            sport_id: Sport name (e.g., 'Running')
+            context: User context with form definitions for field name mapping
+        
+        Returns:
+            Dictionary with equipment list
+        """
+        
+        # Get athlete profile
+        profile = self.db.query(AthleteProfile).filter_by(
+            user_id=self.user_id
+        ).first()
+        
+        if not profile:
+            return {"has_equipment": False, "equipment": []}
+        
+        # Get training structure
+        training_structure = self.db.query(AthleteTrainingStructure).filter_by(
+            profile_id=profile.id,
+            sport_id=sport_id,
+            is_active=True
+        ).first()
+        
+        if not training_structure:
+            return {"has_equipment": False, "equipment": []}
+        
+        # Get field_id for 'equipment' from context
+        equipment_field_id = None
+        form = context.get_form("athlete_training_structure")
+        
+        if form:
+            for field in form.fields:
+                if field.name == "equipment":
+                    equipment_field_id = field.id
+                    break
+        
+        if not equipment_field_id:
+            return {"has_equipment": False, "equipment": [], "error": "Equipment field not found in form"}
+        
+        # Find equipment value
+        equipment_value = self.db.query(AthleteTrainingStructureValue).filter_by(
+            structure_id=training_structure.id,
+            field_id=equipment_field_id
+        ).first()
+        
+        equipment_list = []
+        if equipment_value and equipment_value.value:
+            try:
+                parsed = json.loads(equipment_value.value)
+                if isinstance(parsed, list):
+                    equipment_list = parsed
+            except (json.JSONDecodeError, TypeError):
+                # If not JSON, try to split by comma
+                equipment_list = [e.strip() for e in equipment_value.value.split(',') if e.strip()]
+        
+        return {
+            "has_equipment": len(equipment_list) > 0,
+            "equipment": equipment_list,
+            "structure_id": str(training_structure.id)
+        }
+    
+
+    def update_equipment(self, sport_id: str, equipment_list: List[str], context: UserContext) -> Dict[str, Any]:
+        """
+        Update equipment for a specific sport.
+        
+        Args:
+            sport_id: Sport name (e.g., 'Running')
+            equipment_list: List of equipment items
+            context: User context with form definitions
+        
+        Returns:
+            Updated equipment data
+        """
+        
+        # Get or create athlete profile
+        profile = self._get_or_create_profile()
+        
+        # Get or create sport profile
+        sport_profile = self._get_or_create_sport_profile(profile.id, sport_id)
+        
+        # Get or create training structure
+        training_structure = self.db.query(AthleteTrainingStructure).filter_by(
+            profile_id=profile.id,
+            sport_id=sport_id,
+            is_active=True
+        ).first()
+        
+        if not training_structure:
+            # Create a new training structure
+            structure_form = context.get_form("athlete_training_structure")
+            training_structure = AthleteTrainingStructure(
+                profile_id=profile.id,
+                sport_id=sport_id,
+                form_id=structure_form.id if structure_form else None,
+                is_active=True,
+            )
+            self.db.add(training_structure)
+            self.db.flush()
+        
+        # Get field_id for 'equipment' from context
+        equipment_field_id = None
+        form = context.get_form("athlete_training_structure")
+        
+        if form:
+            for field in form.fields:
+                if field.name == "equipment":
+                    equipment_field_id = field.id
+                    break
+        
+        if not equipment_field_id:
+            raise ValidationError("Equipment field not found in form")
+        
+        # Update or create equipment value
+        existing = self.db.query(AthleteTrainingStructureValue).filter_by(
+            structure_id=training_structure.id,
+            field_id=equipment_field_id
+        ).first()
+        
+        equipment_json = json.dumps(equipment_list, ensure_ascii=False)
+        
+        if existing:
+            existing.value = equipment_json
+        else:
+            self.db.add(AthleteTrainingStructureValue(
+                structure_id=training_structure.id,
+                field_id=equipment_field_id,
+                value=equipment_json,
+            ))
+        
+        self.db.commit()
+        
+        return {
+            "success": True,
+            "sport_id": sport_id,
+            "equipment": equipment_list,
+            "message": "Equipment updated successfully"
+        }

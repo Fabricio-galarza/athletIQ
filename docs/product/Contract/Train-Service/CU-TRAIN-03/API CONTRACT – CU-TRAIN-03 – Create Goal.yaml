@@ -1,0 +1,153 @@
+
+---
+
+### Archivo: `API CONTRACT – CU-TRAIN-03 – Create Goal.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Goal API
+  version: 1.0.0
+  description: API para crear objetivos del atleta
+
+paths:
+  /api/v1/athlete/goal:
+    post:
+      summary: Create a new goal
+      description: |
+        Creates a new goal for a specific sport.
+        Deactivates any previous active goal for the same sport.
+        Only ONE active goal is allowed per sport.
+      tags:
+        - Goals
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: query
+          name: sport_id
+          required: true
+          schema:
+            type: string
+          description: Sport name (e.g., Running, CrossFit)
+          example: "Running"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - primary_goal
+              properties:
+                primary_goal:
+                  type: string
+                  description: Primary goal
+                  example: "improve_endurance"
+                target_date:
+                  type: string
+                  format: date
+                  description: Target date
+                  example: "2026-12-31"
+                secondary_goal:
+                  type: string
+                  description: Secondary goal
+                  example: "increase_speed"
+
+      responses:
+        '201':
+          description: Goal created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateGoalResponse'
+              example:
+                id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                sport_id: "Running"
+                is_active: true
+                message: "Goal created successfully"
+
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorValidation'
+              example:
+                detail: "Form validation failed"
+                details:
+                  primary_goal: ["Field 'primary_goal' is required"]
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                role_error:
+                  value:
+                    error: "FORBIDDEN"
+                    detail: "Athlete role required"
+                sport_error:
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Sport 'Running' is not configured for this user"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    CreateGoalResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sport_id:
+          type: string
+        is_active:
+          type: boolean
+        message:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+        message:
+          type: string
+
+    ErrorValidation:
+      type: object
+      properties:
+        detail:
+          type: string
+        details:
+          type: object

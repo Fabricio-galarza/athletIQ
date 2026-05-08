@@ -1,0 +1,97 @@
+
+---
+
+### Archivo: `API CONTRACT – CU-TRAIN-03 – Get Equipment.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Equipment API
+  version: 1.0.0
+  description: API para obtener equipamiento del atleta
+
+paths:
+  /api/v1/athlete/equipment/{sport_id}:
+    get:
+      summary: Get equipment
+      description: |
+        Returns the equipment list available for a specific sport.
+      tags:
+        - Equipment
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: path
+          name: sport_id
+          required: true
+          schema:
+            type: string
+          description: Sport name (e.g., Running, CrossFit)
+          example: "Running"
+
+      responses:
+        '200':
+          description: Equipment retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetEquipmentResponse'
+              example:
+                has_equipment: true
+                equipment: ["running_shoes", "heart_rate_monitor", "dumbbells"]
+                structure_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    GetEquipmentResponse:
+      type: object
+      properties:
+        has_equipment:
+          type: boolean
+        equipment:
+          type: array
+          items:
+            type: string
+        structure_id:
+          type: string
+          format: uuid
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
