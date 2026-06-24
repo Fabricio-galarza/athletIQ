@@ -5,6 +5,7 @@ from app.infra.db.models.training_structure import AthleteTrainingStructure, Ath
 from app.infra.db.models.goal import AthleteGoal, AthleteGoalValue
 from app.infra.db.models.test_template import TestTemplate, TestTemplateBlock
 from app.infra.db.models.session import TrainingSession, TrainingSessionBlock
+from app.infra.db.models.plan import TrainingPlanPhase, TrainingPlanSession, TrainingPlan
 
 __all__ = [
     "AthleteProfile",
@@ -20,5 +21,8 @@ __all__ = [
     "TestTemplate",
     "TestTemplateBlock",
     "TrainingSession",
-    "TrainingSessionBlock"
+    "TrainingSessionBlock",
+    "TrainingPlan",
+    "TrainingPlanPhase",
+    "TrainingPlanSession"
 ]

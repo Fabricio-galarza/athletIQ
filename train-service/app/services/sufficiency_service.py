@@ -3,11 +3,14 @@ HU-05: Automatic data sufficiency evaluation across all forms.
 HU-06: Find appropriate test template for athlete.
 """
 
+import logging
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.core.context import UserContext
+
+logger = logging.getLogger(__name__)
 from app.infra.db.models.athlete import AthleteProfile
 from app.infra.db.models.sport_profile import AthleteSportProfileValue
 from app.infra.db.models.health import AthleteHealthProfileValue
@@ -300,14 +303,14 @@ class SufficiencyService:
         """
         athlete_data = self._get_athlete_data()
         
-        print("=" * 50)
-        print(f"🔍 Buscando template para:")
-        print(f"   sport: {self.sport_id}")
-        print(f"   level: {athlete_data.get('level')}")
-        print(f"   age: {athlete_data.get('age')}")
-        print(f"   gender: {athlete_data.get('gender')}")
-        print(f"   health_status: {athlete_data.get('health_status')}")
-        print("=" * 50)
+        logger.debug(
+            "Searching test template — sport: %s, level: %s, age: %s, gender: %s, health_status: %s",
+            self.sport_id,
+            athlete_data.get("level"),
+            athlete_data.get("age"),
+            athlete_data.get("gender"),
+            athlete_data.get("health_status"),
+        )
         
         query = text("""
             SELECT 
