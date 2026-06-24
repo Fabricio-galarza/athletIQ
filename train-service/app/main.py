@@ -10,8 +10,9 @@ from app.api.v1 import athlete
 
 from app.routers import evaluation, workout, onboarding, training_structure, plans
 
-import logging
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(name)s: %(message)s")
+import os
+_log_level = getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO)
+logging.basicConfig(level=_log_level, format="%(levelname)s: %(name)s: %(message)s")
 
 settings = get_settings()
 

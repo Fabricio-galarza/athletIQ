@@ -43,10 +43,7 @@ class PlanGenerator:
         Returns:
             Dictionary with all relevant athlete attributes
         """
-        logger.info("=== ENTERING _get_athlete_profile_data ===")
         profile_data = {}
-
-        logger.info("Fetching athlete profile data...")
 
         # Get athlete profile
         profile = self.db.query(AthleteProfile).filter_by(
@@ -57,11 +54,8 @@ class PlanGenerator:
             logger.warning(f"No athlete profile found for user {self.user_id}")
             raise ValidationError("Athlete profile not found")
 
-        logger.info(f"Profile found: {profile.id}")
         # Get field name to value mapping from context
         field_name_map = self._get_field_name_map()
-        logger.info(f"Field name map has {len(field_name_map)} entries")
-        logger.info(f"field_name_map (field_id -> name): {field_name_map}")
 
         # Get sport profile values
         query = text("""
@@ -76,12 +70,9 @@ class PlanGenerator:
             "profile_id": profile.id,
             "sport_id": self.sport_id
         }).fetchall()
-        logger.info(f"Found {len(result)} sport profile values")
-        logger.info(f"athlete_sport_profile_value raw rows: {[tuple(row) for row in result]}")
         for row in result:
             field_name = field_name_map.get(str(row[0]), str(row[0]))
             profile_data[field_name] = row[1]
-        logger.info(f"profile_data after sport profile loop: {profile_data}")
 
         # Get active goal
         goal_values = self.db.query(AthleteGoalValue).join(
@@ -94,8 +85,6 @@ class PlanGenerator:
             )
         ).all()
 
-        logger.info(f"Found {len(goal_values)} goal values")
-
         for val in goal_values:
             field_name = field_name_map.get(str(val.field_id), str(val.field_id))
             profile_data[f"goal_{field_name}"] = val.value
@@ -107,8 +96,6 @@ class PlanGenerator:
             for field in ts_form.fields:
                 if field.id:
                     ts_field_map[str(field.id)] = field.name
-        logger.info(f"ts_field_map (training structure field_id -> name): {ts_field_map}")
-
         ts_query = text("""
             SELECT atsv.field_id, atsv.value
             FROM train.athlete_training_structure_value atsv
@@ -123,8 +110,6 @@ class PlanGenerator:
             "sport_id": self.sport_id
         }).fetchall()
 
-        logger.info(f"Found {len(ts_result)} training structure values")
-        logger.info(f"athlete_training_structure_value raw rows: {[tuple(row) for row in ts_result]}")
         for row in ts_result:
             field_name = ts_field_map.get(str(row[0]), str(row[0]))
             if field_name == "days_per_week":
@@ -391,10 +376,9 @@ class PlanGenerator:
         
         for field in required_fields:
             if not profile_data.get(field):
-                logger.info(f"Profile incomplete: missing '{field}'")
+                logger.debug(f"Profile incomplete: missing '{field}'")
                 return False
 
-        logger.info(f"Profile complete for user {self.user_id}")
         return True
     
     def _get_week_focus(self, week_number: int, total_weeks: int) -> str:
