@@ -57,21 +57,18 @@ async def get_user_context(
         
     except jwt.ExpiredSignatureError:
         logger.warning("Token expired")
-        print("❌ Token expired")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expired"
         )
     except jwt.InvalidTokenError as e:
-        print(f"❌ Invalid token error: {e}")
-        print(f"❌ Tipo de error: {type(e).__name__}")
-        logger.warning(f"Invalid token: {e}")
+        logger.warning(f"Invalid token ({type(e).__name__}): {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"
         )
     except Exception as e:
-        print(f"❌ Error inesperado: {e}")
+        logger.error(f"Unexpected authentication error: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Authentication failed: {str(e)}"

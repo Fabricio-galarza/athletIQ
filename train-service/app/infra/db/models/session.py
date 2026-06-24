@@ -1,4 +1,3 @@
-# app/infra/db/models/session.py
 """
 Training session models for storing workout sessions and test sessions.
 """

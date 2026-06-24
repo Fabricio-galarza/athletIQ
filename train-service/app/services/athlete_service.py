@@ -67,20 +67,24 @@ class AthleteService:
         for field_name, field_data in validated_data.items():
             value = field_data.get("value")
             field_id = field_data.get("field_id")
-            
-            if value is not None and field_id:
-                # Convert value to string (JSON uses dumps for readability)
-                if isinstance(value, (dict, list)):
-                    value_str = json.dumps(value, ensure_ascii=False)
-                else:
-                    value_str = str(value)
-                
-                value_record = value_table(
-                    **{fk_field: fk_id},
-                    field_id=field_id,
-                    value=value_str,
-                )
-                self.db.add(value_record)
+
+            if value is None:
+                continue
+            if not field_id:
+                logger.warning(f"Skipping field '{field_name}': field_id is None, check form definition in X-User-Context")
+                continue
+
+            if isinstance(value, (dict, list)):
+                value_str = json.dumps(value, ensure_ascii=False)
+            else:
+                value_str = str(value)
+
+            value_record = value_table(
+                **{fk_field: fk_id},
+                field_id=field_id,
+                value=value_str,
+            )
+            self.db.add(value_record)
     
     def _check_missing_fields(
         self, 
@@ -113,6 +117,7 @@ class AthleteService:
         # Process athlete_profile form (main metrics)
         form = context.get_form("athlete_profile")
         if form and profile_data:
+            sport_profile.form_id = form.id
             validated = form.validate_data(profile_data)
             self._save_form_values(AthleteProfileValue, "profile_id", profile.id, validated)
             self._save_form_values(AthleteSportProfileValue, "sport_profile_id", sport_profile.id, validated)
