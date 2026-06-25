@@ -1,0 +1,246 @@
+openapi: 3.0.3
+info:
+  title: IA Service — Generate Full Training Plan
+  version: 1.0.0
+  description: |
+    Contract for the external IA service endpoint called by train-service when an
+    athlete with the `generic_ia` feature requests a new generic plan and no
+    reusable plan exists.
+
+    This is NOT an AthletIQ public API. It defines what train-service sends to
+    (and expects from) the external AI provider. The actual provider URL is
+    configured via the `ia_api_url` environment variable in train-service.
+
+    train-service caller: IAWorkoutGenerator.generate_full_plan_via_ia()
+    Caller type: synchronous httpx.Client (timeout 60 s)
+
+paths:
+  /generate-plan:
+    post:
+      summary: Generate a complete training plan for a full goal duration
+      description: |
+        Generates all weeks, sessions, and workout blocks for a generic training
+        plan upfront. train-service validates that the response contains exactly
+        `duration_weeks` weeks, each with a non-empty sessions list. Any deviation
+        causes train-service to fall back to rule-based generation silently.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GeneratePlanRequest'
+            example:
+              profile:
+                level: "intermediate"
+                primary_goal: "improve_endurance"
+                days_per_week: "4"
+              duration_weeks: 12
+              days_per_week: 4
+              sport: "Running"
+      responses:
+        '200':
+          description: Full plan generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GeneratePlanResponse'
+              example:
+                weeks:
+                  - week_number: 1
+                    focus: "build"
+                    sessions:
+                      - day: 1
+                        name: "Endurance Run"
+                        duration_minutes: 45
+                        blocks:
+                          - block_type: "warmup"
+                            duration_minutes: 10
+                            intensity: "easy"
+                            instructions: "Dynamic stretching and light jog"
+                          - block_type: "main"
+                            duration_minutes: 30
+                            intensity: "moderate"
+                            instructions: "Steady aerobic pace"
+                          - block_type: "cooldown"
+                            duration_minutes: 5
+                            intensity: "easy"
+                            instructions: "Static stretching"
+                  - week_number: 2
+                    focus: "build"
+                    sessions:
+                      - day: 1
+                        name: "Tempo Run"
+                        duration_minutes: 50
+                        blocks:
+                          - block_type: "warmup"
+                            duration_minutes: 10
+                            intensity: "easy"
+                            instructions: "Easy jog"
+                          - block_type: "main"
+                            duration_minutes: 35
+                            intensity: "hard"
+                            instructions: "Comfortably hard effort"
+                          - block_type: "cooldown"
+                            duration_minutes: 5
+                            intensity: "easy"
+                            instructions: "Cool down walk"
+
+        '4XX':
+          description: |
+            Any 4xx response is treated as an IA failure by train-service —
+            rule-based fallback is invoked automatically.
+        '5XX':
+          description: |
+            Any 5xx response is treated as an IA failure by train-service —
+            rule-based fallback is invoked automatically.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token from `ia_api_key` settings variable
+
+  schemas:
+    GeneratePlanRequest:
+      type: object
+      required:
+        - profile
+        - duration_weeks
+        - days_per_week
+        - sport
+      properties:
+        profile:
+          type: object
+          description: |
+            Athlete profile attributes as field_name → value pairs. Includes all
+            fields resolved from the athlete_profile and athlete_goal forms, plus
+            days_per_week from the training structure.
+          additionalProperties:
+            type: string
+          example:
+            level: "intermediate"
+            primary_goal: "improve_endurance"
+            days_per_week: "4"
+            goal_target_date: "2026-09-30"
+        duration_weeks:
+          type: integer
+          minimum: 1
+          maximum: 52
+          description: Total number of weeks the plan must cover (from _calculate_plan_duration)
+          example: 12
+        days_per_week:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: Number of training sessions per week
+          example: 4
+        sport:
+          type: string
+          description: Sport identifier (sport_id from train-service)
+          example: "Running"
+
+    GeneratePlanResponse:
+      type: object
+      required:
+        - weeks
+      properties:
+        weeks:
+          type: array
+          description: |
+            One entry per week. MUST contain exactly `duration_weeks` entries.
+            train-service rejects responses with len(weeks) != duration_weeks.
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/WeekPlan'
+
+    WeekPlan:
+      type: object
+      required:
+        - week_number
+        - sessions
+      properties:
+        week_number:
+          type: integer
+          minimum: 1
+          description: 1-based week index
+          example: 1
+        focus:
+          type: string
+          enum: [build, peak, taper]
+          description: Training focus for this week (optional; train-service defaults to build if absent)
+          example: "build"
+        sessions:
+          type: array
+          description: |
+            Training sessions for this week. MUST be non-empty.
+            train-service rejects responses where any week has an empty sessions list.
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SessionPlan'
+
+    SessionPlan:
+      type: object
+      required:
+        - day
+        - duration_minutes
+        - blocks
+      properties:
+        day:
+          type: integer
+          minimum: 1
+          description: Day-of-week index (1-based, relative to week start)
+          example: 1
+        name:
+          type: string
+          description: Human-readable session name
+          example: "Endurance Run"
+        duration_minutes:
+          type: integer
+          minimum: 1
+          description: Total planned session duration in minutes
+          example: 45
+        blocks:
+          type: array
+          description: Ordered list of workout blocks within this session
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/WorkoutBlock'
+
+    WorkoutBlock:
+      type: object
+      required:
+        - block_type
+        - duration_minutes
+        - intensity
+      properties:
+        block_type:
+          type: string
+          enum: [warmup, main, cooldown, interval, strength, recovery]
+          description: Type of workout block (maps to TrainingSessionBlock.block_type)
+          example: "main"
+        duration_minutes:
+          type: integer
+          minimum: 1
+          description: Duration of this block in minutes
+          example: 30
+        intensity:
+          type: string
+          enum: [easy, moderate, hard, max]
+          description: Effort level for this block (maps to TrainingSessionBlock.intensity)
+          example: "moderate"
+        instructions:
+          type: string
+          description: Coaching instructions for this block
+          example: "Maintain steady aerobic pace throughout"
+
+  # train-service validation rules (informative, not enforced by the IA service)
+  x-trainservice-validation:
+    fallback_triggers:
+      - "Connection error or timeout (60 s)"
+      - "HTTP status != 200"
+      - "Response body missing 'weeks' key"
+      - "len(response.weeks) != request.duration_weeks"
+      - "Any week has an empty sessions list"
+      - "JSON parse error"
+    fallback_action: "Rule-based generation with source='template'; WARNING logged"

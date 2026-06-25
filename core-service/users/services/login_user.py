@@ -25,6 +25,7 @@ def login_user(data):
     """
     
     try:
+        print("EMAIL", data.get("email"))
         email = data.get("email")
         password = data.get("password")
         
@@ -32,8 +33,10 @@ def login_user(data):
         try:
             user = User.objects.get(email=email, is_active=True)
             if not user.check_password(password):
+                print(user)
                 raise ValueError("CREDENCIALES INVALIDAS")
         except ObjectDoesNotExist:
+            print("EXCEPTION")
             raise ValueError("CREDENCIALES INVALIDAS")
         
         # check if session is already cached to avoid unnecessary db queries

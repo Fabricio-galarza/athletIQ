@@ -1,0 +1,149 @@
+
+---
+
+### Archivo: `API CONTRACT – CU-TRAIN-04 – Get Active Plan.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Training Plan API
+  version: 1.0.0
+  description: API para consulta del plan de entrenamiento activo
+
+paths:
+  /api/v1/plans/active:
+    get:
+      summary: Get active training plan
+      description: |
+        Returns the currently active training plan for a specific sport.
+        Returns has_active_plan=false (not an error) when no profile or no active
+        plan exists for the requested sport.
+      tags:
+        - Plans
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: query
+          name: sport_id
+          required: true
+          schema:
+            type: string
+          description: Sport name (e.g., Running, CrossFit)
+          example: "Running"
+
+      responses:
+        '200':
+          description: Active plan status (has_active_plan=false is a valid non-error response)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivePlanResponse'
+              examples:
+                active_plan_exists:
+                  summary: Athlete has an active plan
+                  value:
+                    has_active_plan: true
+                    plan:
+                      id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                      name: "Running Training Plan - 2026-06-17"
+                      plan_type: "generic"
+                      start_date: "2026-06-17"
+                      end_date: "2026-07-15"
+                      duration_weeks: 4
+                      total_sessions: 16
+                      source: "ai"
+                no_active_plan:
+                  summary: No active plan for this sport
+                  value:
+                    has_active_plan: false
+                    plan: null
+
+        '401':
+          description: Unauthorized — missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              example:
+                detail: "Not authenticated"
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                role_error:
+                  value:
+                    error: "FORBIDDEN"
+                    detail: "Athlete role required"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    ActivePlanResponse:
+      type: object
+      properties:
+        has_active_plan:
+          type: boolean
+        plan:
+          nullable: true
+          oneOf:
+            - $ref: '#/components/schemas/ActivePlanSummary'
+            - type: 'null'
+
+    ActivePlanSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        plan_type:
+          type: string
+          enum: ["generic", "adaptive"]
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        duration_weeks:
+          type: integer
+        total_sessions:
+          type: integer
+          description: Count of training_plan_session records linked to this plan
+        source:
+          type: string
+          enum: ["ai", "template", "coach"]
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+```
