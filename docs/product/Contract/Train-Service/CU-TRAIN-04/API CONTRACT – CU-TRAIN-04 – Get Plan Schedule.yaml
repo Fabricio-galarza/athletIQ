@@ -1,0 +1,214 @@
+
+---
+
+### Archivo: `API CONTRACT – CU-TRAIN-04 – Get Plan Schedule.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Training Plan API
+  version: 1.0.0
+  description: API para consulta del calendario de un plan de entrenamiento
+
+paths:
+  /api/v1/plans/{plan_id}/schedule:
+    get:
+      summary: Get plan schedule
+      description: |
+        Returns the complete schedule for a training plan: all phases (weeks)
+        with their sessions ordered by week_number and day_number.
+        Returns 404 if the plan does not exist or does not belong to the
+        authenticated athlete.
+      tags:
+        - Plans
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: path
+          name: plan_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the training plan
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+      responses:
+        '200':
+          description: Plan schedule returned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanScheduleResponse'
+              example:
+                plan_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                plan_name: "Running Training Plan - 2026-06-17"
+                plan_type: "generic"
+                total_weeks: 4
+                schedule:
+                  - week_number: 1
+                    name: "Week 1"
+                    focus: "build"
+                    start_date: "2026-06-17"
+                    end_date: "2026-06-23"
+                    sessions:
+                      - session_id: "a1b2c3d4-0000-0000-0000-000000000001"
+                        day_number: 1
+                        scheduled_date: "2026-06-17"
+                        duration_minutes: 45
+                        status: "planned"
+                      - session_id: "a1b2c3d4-0000-0000-0000-000000000002"
+                        day_number: 2
+                        scheduled_date: "2026-06-18"
+                        duration_minutes: 40
+                        status: "planned"
+                      - session_id: "a1b2c3d4-0000-0000-0000-000000000003"
+                        day_number: 3
+                        scheduled_date: "2026-06-19"
+                        duration_minutes: 45
+                        status: "planned"
+                      - session_id: "a1b2c3d4-0000-0000-0000-000000000004"
+                        day_number: 4
+                        scheduled_date: "2026-06-20"
+                        duration_minutes: 40
+                        status: "planned"
+                  - week_number: 2
+                    name: "Week 2"
+                    focus: "build"
+                    start_date: "2026-06-24"
+                    end_date: "2026-06-30"
+                    sessions: []
+
+        '401':
+          description: Unauthorized — missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              example:
+                detail: "Not authenticated"
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                role_error:
+                  value:
+                    error: "FORBIDDEN"
+                    detail: "Athlete role required"
+
+        '404':
+          description: Plan not found or does not belong to authenticated athlete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error404'
+              examples:
+                plan_not_found:
+                  value:
+                    detail: "Plan not found"
+                profile_not_found:
+                  value:
+                    detail: "Athlete profile not found"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    PlanScheduleResponse:
+      type: object
+      properties:
+        plan_id:
+          type: string
+          format: uuid
+        plan_name:
+          type: string
+          nullable: true
+        plan_type:
+          type: string
+          enum: ["generic", "adaptive"]
+        total_weeks:
+          type: integer
+          description: Number of phases currently in the schedule (for adaptive plans, equals generated weeks, not total duration)
+        schedule:
+          type: array
+          items:
+            $ref: '#/components/schemas/WeekSchedule'
+
+    WeekSchedule:
+      type: object
+      properties:
+        week_number:
+          type: integer
+        name:
+          type: string
+          example: "Week 1"
+        focus:
+          type: string
+          enum: ["build", "peak", "taper"]
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          nullable: true
+        end_date:
+          type: string
+          format: date
+          nullable: true
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SessionSummary'
+
+    SessionSummary:
+      type: object
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        day_number:
+          type: integer
+        scheduled_date:
+          type: string
+          format: date
+          nullable: true
+        duration_minutes:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: ["planned", "in_progress", "completed", "skipped"]
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+    Error404:
+      type: object
+      properties:
+        detail:
+          type: string
+```

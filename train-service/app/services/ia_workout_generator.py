@@ -150,9 +150,65 @@ class IAWorkoutGenerator:
             sessions.append(session)
         
         self.db.commit()
-        
+
         return sessions
-    
+
+    def generate_full_plan_via_ia(
+        self,
+        profile: Dict[str, Any],
+        duration_weeks: int,
+        days_per_week: int,
+        sport: str,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Call the external IA service to generate a complete training plan upfront.
+
+        Sends a single synchronous POST to {ia_api_url}/generate-plan and returns
+        the parsed response dict on success. Any failure (network error, timeout,
+        HTTP error, malformed response, JSON parse error) is logged at WARNING and
+        returns None — the caller falls back to rule-based generation transparently.
+
+        Uses httpx.Client (sync) because generate_generic_plan() is synchronous.
+        asyncio.run() inside a sync method called from an async FastAPI handler
+        raises a nested-event-loop error (see plan.md Complexity Tracking).
+
+        Args:
+            profile: Athlete profile attributes as field_name → value pairs.
+            duration_weeks: Total weeks the plan must cover (from _calculate_plan_duration).
+            days_per_week: Number of training sessions per week.
+            sport: Sport identifier (sport_id from train-service).
+
+        Returns:
+            Parsed response dict ({"weeks": [...]}) on HTTP 200, None on any failure.
+        """
+        if not settings.ia_api_url:
+            return None
+
+        payload = {
+            "profile": profile,
+            "duration_weeks": duration_weeks,
+            "days_per_week": days_per_week,
+            "sport": sport,
+        }
+
+        try:
+            with httpx.Client(timeout=60.0) as client:
+                response = client.post(
+                    f"{settings.ia_api_url}/generate-plan",
+                    json=payload,
+                    headers={"Authorization": f"Bearer {settings.ia_api_key}"},
+                )
+                response.raise_for_status()
+                return response.json()
+        except (
+            httpx.TransportError,   # ConnectError, ReadError, WriteError, TimeoutException, ProtocolError
+            httpx.HTTPStatusError,
+            ValueError,             # json.JSONDecodeError is a subclass
+            KeyError,
+        ) as e:
+            logger.warning("IA API error for generic plan generation: %s", e)
+            return None
+
     def _calculate_intensity_adjustment(self, previous_metrics: Optional[List[Dict[str, Any]]]) -> float:
         """
         Calculate intensity adjustment based on previous week's performance.

@@ -1,0 +1,253 @@
+
+---
+
+### Archivo: `API CONTRACT – CU-TRAIN-04 – Generate Plan.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Training Plan API
+  version: 1.0.0
+  description: API para generación de planes de entrenamiento genéricos y adaptativos
+
+paths:
+  /api/v1/plans/generate:
+    post:
+      summary: Generate training plan
+      description: |
+        CU-TRAIN-04: Generates a training plan for the authenticated athlete.
+
+        Flow:
+        1. Validates that sport_id is configured for the athlete.
+        2. For adaptive plans, verifies the athlete has the adaptive_training feature.
+        3. Checks profile completeness (level, primary_goal, days_per_week required).
+        4. For generic plans (force_regenerate=false): attempts plan reuse via exact
+           profile-hash match, then similarity scoring (≥80%). If reusable, clones
+           the existing plan and returns is_new_plan=false.
+        5. If no reuse: generates a new generic plan (all sessions upfront) or adaptive
+           plan (header + first week only).
+        6. Only ONE active plan is kept per athlete+sport; any existing active plan is
+           deactivated before the new one is saved.
+      tags:
+        - Plans
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanGenerationRequest'
+            examples:
+              generic_plan:
+                summary: Generate a generic plan
+                value:
+                  sport_id: "Running"
+                  plan_type: "generic"
+                  force_regenerate: false
+              adaptive_plan:
+                summary: Generate an adaptive plan (premium)
+                value:
+                  sport_id: "Running"
+                  plan_type: "adaptive"
+                  force_regenerate: false
+              force_new_generic:
+                summary: Force new generic plan even if reusable exists
+                value:
+                  sport_id: "Running"
+                  plan_type: "generic"
+                  force_regenerate: true
+
+      responses:
+        '201':
+          description: Plan generated or reused successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanGenerationResponse'
+              examples:
+                new_generic_plan:
+                  summary: New generic plan generated
+                  value:
+                    success: true
+                    plan_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                    plan_type: "generic"
+                    is_new_plan: true
+                    reused_from_plan_id: null
+                    message: "Generic plan generated for Running"
+                    sessions_created: 16
+                    total_weeks: 4
+                reused_plan:
+                  summary: Existing plan reused (clone)
+                  value:
+                    success: true
+                    plan_id: "a1b2c3d4-1234-5678-abcd-000000000001"
+                    plan_type: "generic"
+                    is_new_plan: false
+                    reused_from_plan_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                    message: "Plan reused from existing template. Exact profile match found"
+                    sessions_created: 16
+                    total_weeks: 4
+                adaptive_plan:
+                  summary: New adaptive plan (first week generated)
+                  value:
+                    success: true
+                    plan_id: "b2c3d4e5-2345-6789-bcde-000000000002"
+                    plan_type: "adaptive"
+                    is_new_plan: true
+                    reused_from_plan_id: null
+                    message: "Adaptive plan structure created. First week generated."
+                    sessions_created: 4
+                    total_weeks: 8
+                incomplete_profile:
+                  summary: Profile incomplete — no plan created
+                  value:
+                    success: false
+                    plan_id: null
+                    plan_type: "generic"
+                    is_new_plan: false
+                    reused_from_plan_id: null
+                    message: "Profile incomplete. Please complete your profile before generating a plan."
+                    sessions_created: 0
+                    total_weeks: 0
+
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error400'
+              examples:
+                sport_not_configured:
+                  value:
+                    detail: "Sport 'Running' is not configured for this user"
+
+        '401':
+          description: Unauthorized — missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              example:
+                detail: "Not authenticated"
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                role_error:
+                  value:
+                    error: "FORBIDDEN"
+                    detail: "Athlete role required"
+                feature_not_available:
+                  value:
+                    detail: "Adaptive training feature not available in your plan"
+
+        '500':
+          description: Internal server error during plan generation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error500'
+              example:
+                detail: "Failed to generate plan: unexpected error"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    PlanGenerationRequest:
+      type: object
+      required:
+        - sport_id
+      properties:
+        sport_id:
+          type: string
+          description: Sport name (must be in the athlete's configured sports)
+          example: "Running"
+        plan_type:
+          type: string
+          enum: ["generic", "adaptive"]
+          default: "generic"
+          description: |
+            Plan generation mode.
+            - generic: all sessions created upfront
+            - adaptive: header + first week only; subsequent weeks generated on demand
+        force_regenerate:
+          type: boolean
+          default: false
+          description: |
+            When true, skip reuse check and always generate a fresh plan.
+            Ignored for adaptive plans (always generated fresh).
+
+    PlanGenerationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: False only when profile is incomplete (no plan created)
+        plan_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the created or reused plan; null when success=false
+        plan_type:
+          type: string
+          enum: ["generic", "adaptive"]
+        is_new_plan:
+          type: boolean
+          description: True when a new plan was generated; false when an existing plan was cloned
+        reused_from_plan_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID of the original plan when is_new_plan=false; null otherwise
+        message:
+          type: string
+          description: Human-readable summary of the outcome
+        sessions_created:
+          type: integer
+          description: Number of training sessions created (0 when success=false)
+        total_weeks:
+          type: integer
+          description: Total duration of the plan in weeks (0 when success=false)
+
+    Error400:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+    Error500:
+      type: object
+      properties:
+        detail:
+          type: string
+```

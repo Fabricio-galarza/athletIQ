@@ -254,6 +254,8 @@ class PlanMatcher:
         Creates a new TrainingPlan anchored to today with new TrainingSession and
         TrainingSessionBlock records owned by the target athlete. Any pre-existing
         active plan for (profile_id, sport_id) is deactivated first (soft-state).
+        The cloned plan always receives source="template" regardless of the source
+        plan's source — a clone is derived, not independently AI-generated.
 
         Args:
             source_plan: The plan whose structure will be cloned.
@@ -291,7 +293,7 @@ class PlanMatcher:
             start_date=today,
             end_date=new_end,
             duration_weeks=source_plan.duration_weeks,
-            source=source_plan.source,
+            source="template",  # clone is derived, not independently AI-generated
             original_plan_id=source_plan.id,
             profile_hash=source_plan.profile_hash,
             goal_id=source_plan.goal_id,

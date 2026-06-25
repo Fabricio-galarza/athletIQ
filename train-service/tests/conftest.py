@@ -30,6 +30,7 @@ from app.main import app
 ATHLETE_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 PREMIUM_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000002")
 ATHLETE_B_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000003")
+GENERIC_IA_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000004")
 
 # Field UUIDs used in the test UserContext forms and DB value rows.
 # They do NOT exist in core.field — similarity matching now uses context forms.
@@ -162,6 +163,11 @@ def athlete_b_context() -> UserContext:
     return _build_context(ATHLETE_B_USER_ID)
 
 
+@pytest.fixture
+def generic_ia_context() -> UserContext:
+    return _build_context(GENERIC_IA_USER_ID, features=["generic_ia"])
+
+
 # ── TestClient factories ───────────────────────────────────────────────────────
 
 def _make_client(db_session: Session, context: UserContext) -> TestClient:
@@ -207,6 +213,14 @@ def athlete_b_client(db_session, athlete_b_context):
 
 
 @pytest.fixture
+def generic_ia_client(db_session, generic_ia_context):
+    """TestClient authenticated as the generic_ia test athlete."""
+    client = _make_client(db_session, generic_ia_context)
+    yield client
+    _clear_overrides()
+
+
+@pytest.fixture
 def raw_client(db_session):
     """TestClient with DB override only — no auth override (tests real 401/403)."""
 
@@ -244,6 +258,15 @@ def premium_profile(db_session) -> AthleteProfile:
 def athlete_b_profile(db_session) -> AthleteProfile:
     """Insert a minimal AthleteProfile for test athlete B."""
     profile = AthleteProfile(user_id=ATHLETE_B_USER_ID)
+    db_session.add(profile)
+    db_session.flush()
+    return profile
+
+
+@pytest.fixture
+def generic_ia_profile(db_session) -> AthleteProfile:
+    """Insert a minimal AthleteProfile for the generic_ia test athlete."""
+    profile = AthleteProfile(user_id=GENERIC_IA_USER_ID)
     db_session.add(profile)
     db_session.flush()
     return profile

@@ -11,10 +11,12 @@ from sqlalchemy import text
 
 import logging
 
+from app.core.config import get_settings
 from app.core.context import UserContext
 from app.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 from app.infra.db.models.plan import TrainingPlan, TrainingPlanPhase, TrainingPlanSession
 from app.infra.db.models.session import TrainingSession, TrainingSessionBlock
 from app.infra.db.models.athlete import AthleteProfile
@@ -183,42 +185,80 @@ class PlanGenerator:
         """
         Generate a complete generic plan (all sessions upfront).
 
-        Deactivates any existing active plan for the same athlete + sport before
-        creating the new one (soft-state, FR-010).
+        When the athlete has the generic_ia feature, ia_enabled=True, and ia_api_url
+        is configured, calls IAWorkoutGenerator.generate_full_plan_via_ia() to generate
+        all weeks in one IA request. Falls back to rule-based generation silently on any
+        IA failure or if the gate conditions are not met.
+
+        source="ai" when IA generation succeeds; source="template" in all other cases
+        (rule-based, no feature, IA disabled, IA failure). Deactivates any existing
+        active plan for the same athlete + sport before creating the new one (soft-state).
 
         Returns:
             Tuple of (TrainingPlan, list of TrainingSession)
         """
-        # Get athlete profile data
         profile_data = self._get_athlete_profile_data()
 
-        # Check if profile is complete
         if not self._is_profile_complete(profile_data):
             raise ValidationError("Profile incomplete. Please complete your profile first.")
 
         profile_id = self._get_profile_id()
 
-        # Deactivate existing active plan for this athlete + sport (soft state)
         self.db.query(TrainingPlan).filter_by(
             profile_id=profile_id,
             sport_id=self.sport_id,
             is_active=True,
         ).update({"is_active": False})
 
-        # Generate profile hash for matching
         matcher = PlanMatcher(self.db, self.user_id, self.sport_id, self.context)
         profile_hash = matcher.generate_profile_hash(profile_data)
 
-        # Calculate plan duration
         duration_weeks = self._calculate_plan_duration(profile_data)
-
-        # Get days per week from profile
         days_per_week = int(profile_data.get("days_per_week", 4))
-
-        # Calculate start date (today)
         start_date = date.today()
 
-        # Create training plan
+        ia_gen = IAWorkoutGenerator(self.db, self.user_id, self.sport_id)
+
+        # ── Feature gate: attempt full-plan IA generation ─────────────────────
+        # ia_weeks maps week_number → IA week dict; empty means rule-based path.
+        ia_weeks: Dict[int, Any] = {}
+
+        ia_ok = (
+            self.context.has_feature("generic_ia")
+            and settings.ia_enabled
+            and bool(settings.ia_api_url)
+        )
+
+        if ia_ok:
+            try:
+                ia_result = ia_gen.generate_full_plan_via_ia(
+                    profile_data, duration_weeks, days_per_week, self.sport_id
+                )
+            except Exception as e:
+                logger.warning("IA API error for generic plan generation: %s", e)
+                ia_result = None
+            weeks_list = (ia_result or {}).get("weeks", [])
+            if (
+                len(weeks_list) == duration_weeks
+                and all(w.get("sessions") for w in weeks_list)
+            ):
+                source = "ai"
+                ia_weeks = {w["week_number"]: w for w in weeks_list}
+            else:
+                if ia_result is not None:
+                    # ia_result is not None means no exception was raised — the IA
+                    # returned a response but it failed structural validation.
+                    logger.warning(
+                        "IA API error for generic plan generation: response validation failed "
+                        "(expected %d weeks with non-empty sessions, got %d)",
+                        duration_weeks,
+                        len(weeks_list),
+                    )
+                source = "template"
+        else:
+            source = "template"
+
+        # ── Create plan record ────────────────────────────────────────────────
         plan = TrainingPlan(
             profile_id=profile_id,
             sport_id=self.sport_id,
@@ -229,77 +269,109 @@ class PlanGenerator:
             start_date=start_date,
             end_date=start_date + timedelta(weeks=duration_weeks),
             duration_weeks=duration_weeks,
-            source="ai",
-            profile_hash=profile_hash
+            source=source,
+            profile_hash=profile_hash,
         )
-        
         self.db.add(plan)
         self.db.flush()
-        
-        sessions = []
-        ia_gen = IAWorkoutGenerator(self.db, self.user_id, self.sport_id)
 
-        # Generate phases (weeks)
+        sessions = []
+
+        # ── Generate weeks ────────────────────────────────────────────────────
         for week in range(1, duration_weeks + 1):
-            # Create phase for this week
+            ia_week = ia_weeks.get(week)
+            week_focus = (
+                ia_week.get("focus") or self._get_week_focus(week, duration_weeks)
+                if ia_week
+                else self._get_week_focus(week, duration_weeks)
+            )
+
             phase = TrainingPlanPhase(
                 plan_id=plan.id,
                 name=f"Week {week}",
                 week_number=week,
                 start_date=start_date + timedelta(weeks=week - 1),
                 end_date=start_date + timedelta(weeks=week) - timedelta(days=1),
-                focus=self._get_week_focus(week, duration_weeks)
+                focus=week_focus,
             )
             self.db.add(phase)
             self.db.flush()
 
-            # Generate workouts via IAWorkoutGenerator rule-based logic
-            workouts = ia_gen._generate_rule_based_workouts(
-                profile_data, days_per_week, week, duration_weeks, 1.0
-            )
-
-            # Create sessions for each workout
-            for day, workout_data in enumerate(workouts, start=1):
-                # Create training session
-                session = TrainingSession(
-                    profile_id=profile_id,
-                    sport_id=self.sport_id,
-                    status="planned",
-                    source="ai",
-                    planned_date=phase.start_date + timedelta(days=day - 1),
-                    planned_duration_minutes=workout_data.get("duration_minutes", 45)
-                )
-                self.db.add(session)
-                self.db.flush()
-
-                # Create blocks for the session
-                for block_order, block_data in enumerate(workout_data.get("blocks", []), start=1):
-                    block = TrainingSessionBlock(
-                        session_id=session.id,
-                        order=block_order,
-                        block_type=block_data.get("block_type"),
-                        duration_minutes=block_data.get("duration_minutes"),
-                        intensity=block_data.get("intensity"),
-                        instructions=block_data.get("instructions")
+            if ia_week:
+                # IA path: sessions come directly from the IA response
+                for session_data in ia_week.get("sessions", []):
+                    day = session_data.get("day", 1)
+                    session = TrainingSession(
+                        profile_id=profile_id,
+                        sport_id=self.sport_id,
+                        status="planned",
+                        source=source,
+                        planned_date=phase.start_date + timedelta(days=day - 1),
+                        planned_duration_minutes=session_data.get("duration_minutes", 45),
                     )
-                    self.db.add(block)
+                    self.db.add(session)
+                    self.db.flush()
 
-                # Link session to plan phase
-                plan_session = TrainingPlanSession(
-                    plan_id=plan.id,
-                    phase_id=phase.id,
-                    session_id=session.id,
-                    week_number=week,
-                    day_number=day,
-                    scheduled_date=phase.start_date + timedelta(days=day - 1),
-                    order=day
+                    for block_order, block_data in enumerate(session_data.get("blocks", []), start=1):
+                        self.db.add(TrainingSessionBlock(
+                            session_id=session.id,
+                            order=block_order,
+                            block_type=block_data.get("block_type"),
+                            duration_minutes=block_data.get("duration_minutes"),
+                            intensity=block_data.get("intensity"),
+                            instructions=block_data.get("instructions"),
+                        ))
+
+                    self.db.add(TrainingPlanSession(
+                        plan_id=plan.id,
+                        phase_id=phase.id,
+                        session_id=session.id,
+                        week_number=week,
+                        day_number=day,
+                        scheduled_date=phase.start_date + timedelta(days=day - 1),
+                        order=day,
+                    ))
+                    sessions.append(session)
+            else:
+                # Rule-based path: generate workouts via IAWorkoutGenerator
+                workouts = ia_gen._generate_rule_based_workouts(
+                    profile_data, days_per_week, week, duration_weeks, 1.0
                 )
-                self.db.add(plan_session)
+                for day, workout_data in enumerate(workouts, start=1):
+                    session = TrainingSession(
+                        profile_id=profile_id,
+                        sport_id=self.sport_id,
+                        status="planned",
+                        source=source,
+                        planned_date=phase.start_date + timedelta(days=day - 1),
+                        planned_duration_minutes=workout_data.get("duration_minutes", 45),
+                    )
+                    self.db.add(session)
+                    self.db.flush()
 
-                sessions.append(session)
-        
+                    for block_order, block_data in enumerate(workout_data.get("blocks", []), start=1):
+                        self.db.add(TrainingSessionBlock(
+                            session_id=session.id,
+                            order=block_order,
+                            block_type=block_data.get("block_type"),
+                            duration_minutes=block_data.get("duration_minutes"),
+                            intensity=block_data.get("intensity"),
+                            instructions=block_data.get("instructions"),
+                        ))
+
+                    self.db.add(TrainingPlanSession(
+                        plan_id=plan.id,
+                        phase_id=phase.id,
+                        session_id=session.id,
+                        week_number=week,
+                        day_number=day,
+                        scheduled_date=phase.start_date + timedelta(days=day - 1),
+                        order=day,
+                    ))
+                    sessions.append(session)
+
         self.db.commit()
-        
+
         return plan, sessions
     
     def generate_adaptive_plan_structure(self) -> TrainingPlan:

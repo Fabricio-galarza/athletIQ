@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+.env.*
+!.env.example
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Alembic
+alembic.ini.bak
+
+# Project specific - Core
+core-service/.env
+core-service/__pycache__/
+
+# Project specific - Train
+train-service/.env
+train-service/__pycache__/
+train-service/migrations/__pycache__/
+
+# Nested __pycache__
+*/*/__pycache__/
+*/*/*/__pycache__/
