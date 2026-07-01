@@ -1,0 +1,141 @@
+openapi: 3.0.3
+info:
+  title: User Sports API
+  version: 1.0.0
+  description: API para gestión de deportes del usuario
+
+paths:
+  /api/v1/user/sports/:
+    post:
+      summary: Configurar deportes del usuario
+      description: |
+        Permite asignar los deportes al usuario autenticado.
+
+        - Reemplaza completamente los deportes actuales
+        - Valida que los deportes existan y estén activos
+        - Valida que el usuario tenga un plan activo
+        - Valida el límite de deportes según el plan (feature max_sports_X)
+
+      tags:
+        - User Sports
+      security:
+        - BearerAuth: []
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSportsRequest'
+            examples:
+              valid_request:
+                value:
+                  sports:
+                    - "67b5f778-1805-4dd0-80ec-c57287bb7597"
+                    - "b12c3d45-6789-4abc-9012-abcdef123456"
+
+      responses:
+        '200':
+          description: Deportes actualizados correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+              examples:
+                success:
+                  value:
+                    message: "Sports updated successfully"
+
+        '400':
+          description: Error de validación o reglas de negocio
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ErrorValidation'
+                  - $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                invalid_sports:
+                  value:
+                    sports:
+                      - "one or more sports are invalid or inactive"
+                no_plan:
+                  value:
+                    error: "User has no active plan"
+                limit_exceeded:
+                  value:
+                    error: "Plan allows only 3 sports"
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UserSportsRequest:
+      type: object
+      properties:
+        sports:
+          type: array
+          items:
+            type: string
+            format: uuid
+          description: Lista de IDs de deportes
+      required:
+        - sports
+      additionalProperties: false
+
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ErrorValidation:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+
+    ErrorMessage:
+      type: object
+      properties:
+        error:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string

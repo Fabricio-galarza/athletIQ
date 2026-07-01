@@ -1,0 +1,163 @@
+openapi: 3.0.3
+info:
+  title: Forms API
+  version: 1.0.0
+  description: API para gestión de formularios
+
+paths:
+  /api/v1/forms/{form_id}/status/:
+    patch:
+      summary: Activar o desactivar formulario
+      description: |
+        Permite activar o desactivar un formulario existente.
+
+        Solo actualiza el campo `is_active`.
+      tags:
+        - Forms
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - in: path
+          name: form_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador del formulario
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                is_active:
+                  type: boolean
+                  description: Indica si el formulario está activo
+              required:
+                - is_active
+            examples:
+              activate:
+                value:
+                  is_active: true
+              deactivate:
+                value:
+                  is_active: false
+
+      responses:
+        '200':
+          description: Estado actualizado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FormToggleResponse'
+              examples:
+                activated:
+                  value:
+                    message: "Form activated successfully"
+                    data:
+                      id: "67b5f778-1805-4dd0-80ec-c57287bb7597"
+                      name: "Training Session"
+                      code: "training_session"
+                      is_active: true
+                deactivated:
+                  value:
+                    message: "Form deactivated successfully"
+                    data:
+                      id: "67b5f778-1805-4dd0-80ec-c57287bb7597"
+                      name: "Training Session"
+                      code: "training_session"
+                      is_active: false
+
+        '400':
+          description: Error de validación
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                missing_field:
+                  value:
+                    error: "is_active field is required"
+                invalid_type:
+                  value:
+                    error: "is_active must be a boolean"
+
+        '404':
+          description: Formulario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                not_found:
+                  value:
+                    error: "Form not found"
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    FormToggleResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            code:
+              type: string
+            is_active:
+              type: boolean
+
+    ErrorMessage:
+      type: object
+      properties:
+        error:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string

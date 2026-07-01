@@ -1,5 +1,6 @@
 from django.db import models
 from common.models import BaseModel
+from django.utils import timezone
 
 
 # defines subscription plans available in the system
@@ -41,13 +42,16 @@ class UserPlan(BaseModel):
     )
 
     # when the plan starts
-    start_date = models.DateTimeField(auto_now_add=True)
+    start_date = models.DateField(default=timezone.now)
 
     # when the plan ends (null = active or lifetime)
     end_date = models.DateTimeField(null=True, blank=True)
 
     # indicates if this is the current active plan
     is_active = models.BooleanField(default=True)
+
+    # Automatic renewal, future implementation
+    auto_renew = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.email} - {self.plan.name}"
@@ -64,6 +68,12 @@ class Feature(BaseModel):
 
     # unique identifier used in code
     code = models.CharField(max_length=100, unique=True)
+
+    module = models.ForeignKey(
+        'modules.Module',
+        on_delete=models.CASCADE,
+        related_name='features'
+    )
 
     def __str__(self):
         return self.name
@@ -87,5 +97,58 @@ class PlanFeature(BaseModel):
     # indicates if the feature is enabled for the plan
     is_enabled = models.BooleanField(default=True)
 
+    class Meta:
+        unique_together = ('plan', 'feature')
+
     def __str__(self):
         return f"{self.plan.name} - {self.feature.code}"
+    
+# defines which modules are enabled for each plan
+# this controls access to system modules per subscription
+class PlanModule(BaseModel):
+
+    plan = models.ForeignKey(
+        Plan,
+        on_delete=models.CASCADE,
+        related_name='plan_modules'
+    )
+
+    module = models.ForeignKey(
+        'modules.Module',
+        on_delete=models.CASCADE,
+        related_name='plan_modules'
+    )
+
+    # indicates if the module is enabled for the plan
+    is_enabled = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('plan', 'module')
+
+    def __str__(self):
+        return f"{self.plan.name} - {self.module.code}"
+    
+# defines which forms are enabled for each plan
+# this controls what data users can input per subscription
+class PlanForm(BaseModel):
+
+    plan = models.ForeignKey(
+        Plan,
+        on_delete=models.CASCADE,
+        related_name='plan_forms'
+    )
+
+    form = models.ForeignKey(
+        'forms.Form',
+        on_delete=models.CASCADE,
+        related_name='plan_forms'
+    )
+
+    # indicates if the form is enabled for the plan
+    is_enabled = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('plan', 'form')
+
+    def __str__(self):
+        return f"{self.plan.name} - {self.form.name}"

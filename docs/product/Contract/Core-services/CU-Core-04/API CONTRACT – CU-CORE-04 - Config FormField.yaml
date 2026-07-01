@@ -1,0 +1,133 @@
+openapi: 3.0.0
+info:
+  title: Form Fields API
+  version: 1.0.0
+  description: API CONTRACT – CU-FORMS-03 – Configure Form Fields
+
+paths:
+  /api/v1/forms/{form_id}/fields/:
+    put:
+      summary: Configure Form Fields
+      description: >
+        Configura los campos de un formulario.
+        Este endpoint reemplaza completamente la configuración existente (estrategia replace).
+
+      tags:
+        - Forms
+
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - name: form_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Identificador del formulario
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                required:
+                  - field_id
+                properties:
+                  field_id:
+                    type: string
+                    format: uuid
+                    example: 11111111-1111-1111-1111-111111111111
+                  sport_id:
+                    type: string
+                    format: uuid
+                    nullable: true
+                    example: 33333333-3333-3333-3333-333333333333
+                  label:
+                    type: string
+                    example: Edad
+                  is_required:
+                    type: boolean
+                    example: true
+                  order:
+                    type: integer
+                    minimum: 0
+                    example: 0
+
+      responses:
+        "200":
+          description: Form fields configured successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Form fields configured successfully
+                  count:
+                    type: integer
+                    example: 2
+
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              examples:
+
+                form_not_found:
+                  summary: Form not found
+                  value:
+                    error: Form not found
+
+                empty_list:
+                  summary: No fields provided
+                  value:
+                    error: Form must have at least one field
+
+                field_not_found:
+                  summary: Field not found
+                  value:
+                    error: Field not found: uuid-field-1
+
+                sport_not_found:
+                  summary: Sport not found
+                  value:
+                    error: Sport not found: uuid-sport-1
+
+                missing_options:
+                  summary: Selectable field without options
+                  value:
+                    error: Field 'Category' must have options configured
+
+                invalid_order:
+                  summary: Invalid order
+                  value:
+                    non_field_errors:
+                      - Order must be >= 0
+
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                detail: Authentication credentials were not provided.
+
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                detail: You do not have permission to perform this action.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

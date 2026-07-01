@@ -1,0 +1,104 @@
+openapi: 3.0.3
+info:
+  title: Payments API
+  version: 1.0.0
+  description: API para gestión de pagos y webhooks
+
+paths:
+  /api/v1/payments/webhook/:
+    post:
+      summary: Procesar webhook de pago
+      description: |
+        Endpoint para recibir notificaciones desde el proveedor de pagos.
+
+        Permite:
+        - Confirmar pagos exitosos (paid)
+        - Manejar pagos fallidos (failed)
+        - Activar planes de usuario
+        - Garantizar idempotencia (no duplicar planes)
+
+        ⚠️ Este endpoint no requiere autenticación (uso externo).
+      tags:
+        - Payments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentWebhookRequest'
+            examples:
+              paid:
+                value:
+                  external_id: "67b5f778-1805-4dd0-80ec-c57287bb7597"
+                  status: "paid"
+              failed:
+                value:
+                  external_id: "67b5f778-1805-4dd0-80ec-c57287bb7597"
+                  status: "failed"
+
+      responses:
+        '200':
+          description: Webhook procesado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+              examples:
+                success:
+                  value:
+                    message: "webhook processed"
+
+        '400':
+          description: Error en procesamiento o validación
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ErrorValidation'
+                  - $ref: '#/components/schemas/ErrorMessage'
+              examples:
+                payment_not_found:
+                  value:
+                    error: "Payment not found"
+                invalid_status:
+                  value:
+                    status:
+                      - "\"invalid\" is not a valid choice."
+
+components:
+  schemas:
+    PaymentWebhookRequest:
+      type: object
+      properties:
+        external_id:
+          type: string
+          description: Identificador externo del pago
+        status:
+          type: string
+          description: Estado del pago enviado por el proveedor
+          enum:
+            - paid
+            - failed
+      required:
+        - external_id
+        - status
+      additionalProperties: false
+
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ErrorValidation:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+
+    ErrorMessage:
+      type: object
+      properties:
+        error:
+          type: string

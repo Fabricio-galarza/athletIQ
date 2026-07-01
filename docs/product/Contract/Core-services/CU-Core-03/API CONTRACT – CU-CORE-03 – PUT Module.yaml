@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: Plans API
+  version: 1.0.0
+  description: API for managing plan modules configuration
+
+paths:
+  /api/v1/plans/{id}/modules/:
+    put:
+      summary: Update Plan Modules
+      description: Enable or disable modules for a specific plan
+      tags:
+        - Plan Modules
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Plan unique identifier
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/PlanModuleRequest'
+            example:
+              - module_id: uuid-module-1
+                is_enabled: true
+              - module_id: uuid-module-2
+                is_enabled: false
+
+      responses:
+        '200':
+          description: Modules updated successfully
+          content:
+            application/json:
+              example:
+                message: Modules updated successfully
+
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              examples:
+                invalid_data:
+                  summary: Invalid data
+                  value:
+                    error:
+                      - INVALID_DATA
+                no_active_modules:
+                  summary: No active modules
+                  value:
+                    error: AT_LEAST_ON_MODULE_REQUIRED
+
+        '404':
+          description: Plan not found
+          content:
+            application/json:
+              example:
+                error: PLAN_NOT_FOUND
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                detail: Authentication credentials were not provided.
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                error: FORBIDDEN
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PlanModuleRequest:
+      type: object
+      required:
+        - module_id
+        - is_enabled
+      properties:
+        module_id:
+          type: string
+          format: uuid
+          description: Module identifier
+        is_enabled:
+          type: boolean
+          description: Enable or disable module

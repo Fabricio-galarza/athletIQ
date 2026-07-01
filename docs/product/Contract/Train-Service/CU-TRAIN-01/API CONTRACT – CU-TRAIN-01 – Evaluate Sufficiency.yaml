@@ -1,0 +1,144 @@
+# API CONTRACT – CU-TRAIN-01 – Evaluate Sufficiency.yaml
+
+openapi: 3.0.3
+info:
+  title: Sufficiency Evaluation API
+  version: 1.0.0
+  description: API para evaluar si el atleta tiene datos suficientes
+
+paths:
+  /api/v1/evaluate/sufficiency:
+    get:
+      summary: Evaluate data sufficiency
+      description: |
+        Evaluates if athlete has sufficient data for training generation.
+        Based on required fields defined in Core forms.
+      tags:
+        - Evaluation
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: query
+          name: sport_id
+          required: true
+          schema:
+            type: string
+          description: Sport name (e.g., Running)
+          example: "running"
+
+      responses:
+        '200':
+          description: Evaluation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationResponse'
+              examples:
+                insufficient:
+                  value:
+                    has_sufficient_data: false
+                    missing_required_fields: ["experience_years", "weekly_frequency", "primary_goal", "gender", "age_range"]
+                    completion_score: 0
+                    requires_test: true
+                    total_required_fields: 5
+                    completed_required_fields: 0
+                sufficient:
+                  value:
+                    has_sufficient_data: true
+                    missing_required_fields: []
+                    completion_score: 100
+                    requires_test: false
+                    total_required_fields: 5
+                    completed_required_fields: 5
+
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error400'
+              example:
+                detail: "sport_id query parameter is required"
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+        '404':
+          description: Form not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error404'
+              example:
+                detail: "Form 'athlete_profile' not found in context"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    EvaluationResponse:
+      type: object
+      properties:
+        has_sufficient_data:
+          type: boolean
+        missing_required_fields:
+          type: array
+          items:
+            type: string
+        completion_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        requires_test:
+          type: boolean
+        total_required_fields:
+          type: integer
+        completed_required_fields:
+          type: integer
+
+    Error400:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+    Error404:
+      type: object
+      properties:
+        detail:
+          type: string

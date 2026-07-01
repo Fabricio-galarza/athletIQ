@@ -1,0 +1,146 @@
+
+---
+
+### Archivo: `API CONTRACT – CU-TRAIN-03 – Update Equipment.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Equipment API
+  version: 1.0.0
+  description: API para actualizar equipamiento del atleta
+
+paths:
+  /api/v1/athlete/equipment/{sport_id}:
+    put:
+      summary: Update equipment
+      description: |
+        Updates the equipment list for a specific sport.
+        Completely replaces the existing list with the new one.
+      tags:
+        - Equipment
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: path
+          name: sport_id
+          required: true
+          schema:
+            type: string
+          description: Sport name (e.g., Running, CrossFit)
+          example: "Running"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - equipment
+              properties:
+                equipment:
+                  type: array
+                  items:
+                    type: string
+                  description: List of equipment available
+                  example: ["running_shoes", "heart_rate_monitor", "dumbbells"]
+
+      responses:
+        '200':
+          description: Equipment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateEquipmentResponse'
+              example:
+                success: true
+                sport_id: "Running"
+                equipment: ["running_shoes", "heart_rate_monitor", "dumbbells"]
+                message: "Equipment updated successfully"
+
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error400'
+              example:
+                detail: "Equipment must be a list"
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error404'
+              example:
+                detail: "Equipment field not found in form"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    UpdateEquipmentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        sport_id:
+          type: string
+        equipment:
+          type: array
+          items:
+            type: string
+        message:
+          type: string
+
+    Error400:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+    Error404:
+      type: object
+      properties:
+        detail:
+          type: string

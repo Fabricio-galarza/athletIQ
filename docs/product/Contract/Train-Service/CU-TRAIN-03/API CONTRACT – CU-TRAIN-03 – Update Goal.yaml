@@ -1,0 +1,156 @@
+
+---
+
+### Archivo: `API CONTRACT – CU-TRAIN-03 – Update Goal.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Goal API
+  version: 1.0.0
+  description: API para actualizar objetivos del atleta
+
+paths:
+  /api/v1/athlete/goal/{goal_id}:
+    put:
+      summary: Update a specific goal
+      description: |
+        Updates a specific goal. Only provided fields will be updated.
+        Partial updates are supported.
+      tags:
+        - Goals
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: path
+          name: goal_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Goal ID to update
+          example: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                primary_goal:
+                  type: string
+                  description: Primary goal
+                  example: "competition"
+                target_date:
+                  type: string
+                  format: date
+                  description: Target date
+                  example: "2026-12-31"
+                secondary_goal:
+                  type: string
+                  description: Secondary goal
+                  example: "increase_speed"
+
+      responses:
+        '200':
+          description: Goal updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateGoalResponse'
+              example:
+                id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                sport_id: "Running"
+                is_active: true
+                updated_fields: ["primary_goal", "target_date"]
+                message: "Goal updated successfully"
+
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error400'
+              example:
+                detail: "Form validation failed"
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+
+        '404':
+          description: Goal not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error404'
+              example:
+                detail: "AthleteGoal with id f47ac10b-58cc-4372-a567-0e02b2c3d479 not found"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    UpdateGoalResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sport_id:
+          type: string
+        is_active:
+          type: boolean
+        updated_fields:
+          type: array
+          items:
+            type: string
+        message:
+          type: string
+
+    Error400:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+
+    Error404:
+      type: object
+      properties:
+        detail:
+          type: string

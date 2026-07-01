@@ -1,0 +1,197 @@
+
+---
+
+### Archivo: `API CONTRACT – CU-TRAIN-02 – Create Training Structure.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Training Structure API
+  version: 1.0.0
+  description: API para crear estructuras de entrenamiento
+
+paths:
+  /api/v1/training-structure/{sport_id}:
+    post:
+      summary: Create training structure
+      description: |
+        Creates a new training structure for a specific sport.
+        Deactivates any existing active structure for the same sport.
+        Only ONE active structure is allowed per sport.
+      tags:
+        - Training Structure
+      security:
+        - BearerAuth: []
+        - UserContext: []
+
+      parameters:
+        - in: path
+          name: sport_id
+          required: true
+          schema:
+            type: string
+          description: Sport name (e.g., Running, CrossFit)
+          example: "Running"
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrainingStructureRequest'
+            example:
+              form_data:
+                athlete_training_structure:
+                  days_per_week: 6
+                  weekly_schedule:
+                    - day: 1
+                      type: "strength"
+                    - day: 2
+                      type: "running"
+                    - day: 3
+                      type: "strength"
+                    - day: 4
+                      type: "running"
+                    - day: 5
+                      type: "running"
+                    - day: 6
+                      type: "running"
+                  available_days: ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+                  preferred_time: "morning"
+                  equipment: ["running_shoes", "heart_rate_monitor", "dumbbells"]
+
+      responses:
+        '201':
+          description: Structure created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateStructureResponse'
+              example:
+                message: "Training structure created successfully"
+                structure_id: "f47ac10b-58cc-4372-a567-0e02b2c3d479"
+                sport_id: "Running"
+                is_active: true
+                previous_structures_deactivated: true
+
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error400'
+              examples:
+                no_data:
+                  value:
+                    detail: "No training structure data provided"
+                validation_error:
+                  value:
+                    detail: "Field 'days_per_week' is required"
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                role_error:
+                  value:
+                    error: "FORBIDDEN"
+                    detail: "Athlete role required"
+                sport_error:
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Sport 'Running' is not configured for this user"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserContext:
+      type: apiKey
+      in: header
+      name: X-User-Context
+
+  schemas:
+    CreateTrainingStructureRequest:
+      type: object
+      required:
+        - form_data
+      properties:
+        form_data:
+          type: object
+          properties:
+            athlete_training_structure:
+              type: object
+              properties:
+                days_per_week:
+                  type: integer
+                  minimum: 1
+                  maximum: 7
+                weekly_schedule:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      day:
+                        type: integer
+                      type:
+                        type: string
+                available_days:
+                  type: array
+                  items:
+                    type: string
+                preferred_time:
+                  type: string
+                  enum: ["morning", "afternoon", "evening"]
+                equipment:
+                  type: array
+                  items:
+                    type: string
+
+    CreateStructureResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        structure_id:
+          type: string
+          format: uuid
+        sport_id:
+          type: string
+        is_active:
+          type: boolean
+        previous_structures_deactivated:
+          type: boolean
+
+    Error400:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+        detail:
+          type: string
+        message:
+          type: string

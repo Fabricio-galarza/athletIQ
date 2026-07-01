@@ -6,7 +6,11 @@ from common.models import BaseModel
 # examples: running, crossfit, swimming
 class Sport(BaseModel):
 
+    #sport name
     name = models.CharField(max_length=100, unique=True)
+
+    # ind if sport is active
+    is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name

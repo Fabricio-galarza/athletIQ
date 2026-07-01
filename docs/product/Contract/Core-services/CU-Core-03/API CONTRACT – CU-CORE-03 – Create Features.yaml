@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: Features API
+  version: 1.0.0
+  description: API for managing system features
+
+paths:
+  /api/v1/features/:
+    post:
+      summary: Create Feature
+      description: Create a new feature and associate it with a module
+      tags:
+        - Features
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFeatureRequest'
+            example:
+              name: Adaptive Training
+              code: adaptive_training
+              module_id: uuid-module-train
+
+      responses:
+        '201':
+          description: Feature created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureResponse'
+              example:
+                id: 4caf6ba3-40d6-4e8e-9c59-229008d79ab7
+                name: Analizer Training
+                code: analizer_training
+                created_at: 2026-03-25T22:55:58.388141Z
+                updated_at: 2026-03-25T22:55:58.389139Z
+
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              examples:
+                duplicated_code:
+                  summary: Duplicated code
+                  value:
+                    error: Feature already exists
+                module_not_found:
+                  summary: Module not found
+                  value:
+                    error: MODULE_NOT_FOUND
+                invalid_data:
+                  summary: Invalid data
+                  value:
+                    name:
+                      - This field is required
+
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                detail: Authentication credentials were not provided.
+
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              example:
+                error: FORBIDDEN
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CreateFeatureRequest:
+      type: object
+      required:
+        - name
+        - code
+        - module_id
+      properties:
+        name:
+          type: string
+          description: Human-readable name
+          example: Adaptive Training
+        code:
+          type: string
+          description: Unique identifier (snake_case recommended)
+          example: adaptive_training
+        module_id:
+          type: string
+          format: uuid
+          description: Module identifier
+
+    FeatureResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time

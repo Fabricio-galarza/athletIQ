@@ -1,0 +1,104 @@
+openapi: 3.0.3
+info:
+  title: Features API
+  version: 1.0.0
+  description: API para obtener las features disponibles en el sistema
+
+paths:
+  /api/v1/features/:
+    get:
+      summary: Obtener lista de features
+      description: |
+        Obtiene la lista de features disponibles en el sistema.
+        Permite visualizar todas las funcionalidades que pueden ser asignadas a los planes.
+      tags:
+        - Features
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Lista de features obtenida correctamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Feature'
+              examples:
+                success:
+                  value:
+                    - id: "16b54127-cfb6-472c-9e39-62eb6520ba13"
+                      name: "Advance_Metrics"
+                      code: "advance_metrics"
+                      created_at: "2026-03-24T00:35:04.681702Z"
+                      updated_at: "2026-03-24T00:35:04.681702Z"
+                    - id: "c833d8f2-8311-494a-8662-424450f34529"
+                      name: "Adaptive Training"
+                      code: "adaptive_training"
+                      created_at: "2026-03-24T22:36:32.695404Z"
+                      updated_at: "2026-03-24T22:37:07.680867Z"
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Feature:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - code
+        - created_at
+        - updated_at
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string

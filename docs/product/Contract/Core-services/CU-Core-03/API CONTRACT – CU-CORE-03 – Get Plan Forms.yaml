@@ -1,0 +1,125 @@
+# openapi: 3.0.3
+info:
+  title: Plans Forms API
+  version: 1.0.0
+  description: API para consulta de formularios configurados por plan
+
+paths:
+  /api/v1/plans/{id}/forms/:
+    get:
+      summary: Obtener formularios de un plan
+      description: |
+        Obtiene los formularios configurados para un plan, indicando cuáles están habilitados.
+        Permite visualizar la estructura de acceso del plan.
+      tags:
+        - Plan Forms
+      security:
+        - BearerAuth: []
+
+      parameters:
+        - in: path
+          name: id
+          required: true
+          description: Identificador del plan
+          schema:
+            type: string
+            format: uuid
+
+      responses:
+        '200':
+          description: Lista de formularios del plan
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanForm'
+              examples:
+                success:
+                  value:
+                    - form_id: "47ad788f-0022-40b1-813c-2d848d725c35"
+                      form_name: "Form Tests"
+                      form_code: "form_tests"
+                      is_enabled: true
+
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error401'
+              examples:
+                unauthorized:
+                  value:
+                    detail: "Authentication credentials were not provided."
+
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error403'
+              examples:
+                forbidden:
+                  value:
+                    error: "FORBIDDEN"
+
+        '404':
+          description: Plan no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorPlanNotFound'
+              examples:
+                not_found:
+                  value:
+                    error: "PLAN_NOT_FOUND"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    PlanForm:
+      type: object
+      properties:
+        form_id:
+          type: string
+          format: uuid
+          description: Id del formulario
+        form_name:
+          type: string
+          description: Nombre del formulario
+        form_code:
+          type: string
+          description: Código del formulario usado en lógica
+        is_enabled:
+          type: boolean
+          description: Indica si el formulario está habilitado
+      required:
+        - form_id
+        - form_name
+        - form_code
+        - is_enabled
+
+    Error401:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Error403:
+      type: object
+      properties:
+        error:
+          type: string
+
+    ErrorPlanNotFound:
+      type: object
+      properties:
+        error:
+          type: string
+          example: PLAN_NOT_FOUND
